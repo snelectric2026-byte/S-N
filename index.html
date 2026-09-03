@@ -12,6 +12,25 @@
     
     <!-- ملف الـ CSS الخارجي -->
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<script>
+  // تسجيل الـ Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+
+  // التقاط حدث التثبيت لإظهار زر "حمله الآن"
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // تقدر تظهر زر عندك في الصفحة وتخليه ينفذ الكود ده لما المستخدم يضطه:
+    // deferredPrompt.prompt();
+  });
+</script>
+
 </head>
 <body>
 
