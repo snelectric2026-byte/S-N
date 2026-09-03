@@ -1,6 +1,6 @@
 {
-  "name": "icon.png",
-  "short_name": "icon.png",
+  "name": "SNelectric",
+  "short_name": "SNelectric",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
