@@ -5,7 +5,7 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    icon: path.join(__dirname, 'sn.ping'), // تحديد أيقونة سطح المكتب
+    icon: path.join(__dirname, 'icon.png'), // تم تصحيح امتداد الأيقونة لتتوافق مع الملفات
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -13,7 +13,6 @@ function createWindow() {
     autoHideMenuBar: true // إخفاء شريط القوائم العالي لشكل أكثر احترافية
   });
 
-  // تحميل ملف الواجهة الخاص بك (افترضنا أن اسمه index.html)
   mainWindow.loadFile('index.html');
 }
 
