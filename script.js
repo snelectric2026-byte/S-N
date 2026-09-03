@@ -906,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (sType.includes('bed') || tag.includes('سرير')) {
                         mesh3D = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 2.0), new THREE.MeshStandardMaterial({ color: 0x9b59b6 }));
                         mesh3D.position.set(relX, 0.25, relZ);
-                    } else if (sType.includes('sofa') || sType.includes('armchair') || tag.includes('كنبه')) {
+                    } else if (sType.includes('sofa') || sType.includes('armchair') || tag.includes('كنبة')) {
                         mesh3D = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0xe67e22 }));
                         mesh3D.position.set(relX, 0.3, relZ);
                     } else {
@@ -937,28 +937,4 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modal3D').style.display = 'none';
         if (renderer3D) renderer3D.dispose();
     };
-});
-document.addEventListener("DOMContentLoaded", function () {
-    // تشغيل الـ Canvas
-    const canvas = new fabric.Canvas('c', {
-        backgroundColor: '#2d2d2d'
-    });
-
-    // تفعيل إظهار وإخفاء القائمة الجانبية عند الضغط على الزر
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-
-    if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', function (e) {
-            e.stopPropagation();
-            sidebar.classList.toggle('active');
-        });
-
-        // إغلاق القائمة عند النقر خارجها داخل مساحة العمل
-        document.getElementById('canvas-container').addEventListener('click', function () {
-            if (sidebar.classList.contains('active')) {
-                sidebar.classList.remove('active');
-            }
-        });
-    }
 });
