@@ -938,3 +938,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (renderer3D) renderer3D.dispose();
     };
 });
+document.addEventListener("DOMContentLoaded", function () {
+    // تشغيل الـ Canvas
+    const canvas = new fabric.Canvas('c', {
+        backgroundColor: '#2d2d2d'
+    });
+
+    // تفعيل إظهار وإخفاء القائمة الجانبية عند الضغط على الزر
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            sidebar.classList.toggle('active');
+        });
+
+        // إغلاق القائمة عند النقر خارجها داخل مساحة العمل
+        document.getElementById('canvas-container').addEventListener('click', function () {
+            if (sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+            }
+        });
+    }
+});
