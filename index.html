@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SNelectric - مولد المساحات والمخططات المعمارية الذكية</title>
+    <title>SNelectric - مولد المساحات والمخططات المعمارية الذكية و MEP</title>
 
     <!-- المكتبات الخارجية -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
-    <!-- ملف الـ CSS الخارجي -->
+    <!-- ملف الـ CSS الخارجي والبيانات -->
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <script>
-      // تسجيل الـ Service Worker
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js');
       }
@@ -25,14 +24,15 @@
 
     <input type="file" id="fileInputJSON" accept=".json" style="display: none;" />
 
+    <!-- شريط الإجراءات العائم للعناصر المحددة -->
     <div id="floatingActionGroup" class="floating-action-group">
         <label id="floatingColorBtn" class="floating-btn" title="تغيير لون هذا العنصر أو الجدار" style="cursor:pointer; font-size:16px; background:rgba(0,242,254,0.3);">🎨<input type="color" id="elementColorPicker" style="opacity:0; width:0; height:0; position:absolute;"></label>
         <button id="floatingDuplicateBtn" class="floating-btn" title="نسخ وتكرار الشكل">📋</button>
         <button id="floatingDeleteBtn" class="floating-btn delete" title="حذف العنصر المحدد">🗑️</button>
     </div>
 
-    <!-- modal إدخال الأبعاد الثلاثية للغرفة -->
-    <div class="modal-overlay" id="roomInputModal">
+    <!-- Modal إدخال الأبعاد الثلاثية للغرفة -->
+    <div class="modal-overlay hidden" id="roomInputModal">
         <div class="modal-card">
             <div class="modal-header">
                 <span id="roomModalTitle">🏠 إدخال أبعاد الحجرة</span>
@@ -64,7 +64,8 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="dimensionsModal">
+    <!-- Modal ملخص المقاسات وتأكيد الحفظ -->
+    <div class="modal-overlay hidden" id="dimensionsModal">
         <div class="modal-card">
             <div class="modal-header">
                 <span>📊 ملخص المقاسات وعدد العناصر قبل الحفظ</span>
@@ -83,12 +84,32 @@
         </div>
     </div>
 
-    <!-- نافذة عرض الـ 3D -->
+    <!-- Modal جدول حصر الكميات الشامل (BOM) -->
+    <div id="inventoryModal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 750px;">
+            <div class="modal-header">
+                <span>📊 جدول حصر الكميات الذكي (Bill of Materials)</span>
+                <button onclick="document.getElementById('inventoryModal').classList.add('hidden')" style="background:none; border:none; color:#fff; cursor:pointer; font-size:18px;">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="inventoryTableContainer"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-top" style="border-radius: 12px; padding: 6px 14px;" onclick="document.getElementById('inventoryModal').classList.add('hidden')">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة عرض الـ 3D التفاعلية -->
     <div id="modal3D" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:#000;">
-        <button onclick="window.close3DModal()" style="position:absolute; top:15px; right:15px; z-index:11; padding:6px 14px; background:#ff007f; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:12px; box-shadow:0 0 10px rgba(255,0,127,0.5);">إغلاق الـ 3D ✕</button>
+        <div style="position:absolute; top:15px; right:15px; z-index:11; display:flex; gap:10px;">
+            <button id="btnToggleCamMode" class="btn-top" style="background:#2563eb; color:#fff; border-radius:8px; padding:6px 14px; font-weight:bold; font-size:12px;">📷 المنظور: خارجي (Orbit)</button>
+            <button onclick="window.close3DModal()" style="padding:6px 14px; background:#ff007f; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:12px; box-shadow:0 0 10px rgba(255,0,127,0.5);">إغلاق الـ 3D ✕</button>
+        </div>
         <div id="container3D" style="width:100%; height:100%;"></div>
     </div>
 
+    <!-- الشريط العلوي الرئيسي -->
     <header class="top-bar">
         <div class="brand">
             <span class="logo-sn">S</span><span class="logo-bolt">⚡</span><span class="logo-sn">N</span>
@@ -98,6 +119,7 @@
             <button id="btnOpenFile" class="btn-top" title="فتح مشروع">📂 فتح</button>
             <button id="btnSaveProject" class="btn-top" title="حفظ مشروع">💾 حفظ</button>
             <button id="btnView3D" class="btn-top" title="مشاهدة والتجول 3D">🧊 3D</button>
+            <button id="btnInventory" class="btn-top" style="background:#2563eb; border-color:#2563eb;" title="حصر الكميات">📊 حصر BOM</button>
             <button id="btnResetZoom" class="btn-top" title="إعادة ضبط التقريب">🎯 تمركز</button>
             <button id="btnUndo" class="btn-top" disabled title="تراجع">↩️ تراجع</button>
             <button id="btnRedo" class="btn-top" disabled title="إعادة">↪️ تقدم</button>
@@ -108,12 +130,52 @@
     </header>
 
     <div class="app-layout">
+        <!-- منطقة اللوحة الرئيسية Canvas -->
         <main class="canvas-container-wrapper" id="canvasContainer">
             <canvas id="drawCanvas"></canvas>
+
+            <!-- لوحة التحكم بالخصائص التفاعلية للقطع العائمة -->
+            <div id="propertiesPanel" class="properties-panel hidden">
+                <h3 style="font-size: 13px; color: #00f2fe; margin-bottom: 8px;">خصائص العنصر المحدد</h3>
+                <div class="input-group">
+                    <label for="propName" style="font-size:11px; color:#cbd5e1;">الاسم/الوسم:</label>
+                    <input type="text" id="propName" style="width:100%; padding:4px; border-radius:4px; background:#000; color:#fff; border:1px solid #333;">
+                </div>
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <div class="input-group" style="flex:1;">
+                        <label for="propWidth" style="font-size:11px; color:#cbd5e1;">العرض (سم):</label>
+                        <input type="number" id="propWidth" style="width:100%; padding:4px; border-radius:4px; background:#000; color:#fff; border:1px solid #333;">
+                    </div>
+                    <div class="input-group" style="flex:1;">
+                        <label for="propHeight" style="font-size:11px; color:#cbd5e1;">الطول (سم):</label>
+                        <input type="number" id="propHeight" style="width:100%; padding:4px; border-radius:4px; background:#000; color:#fff; border:1px solid #333;">
+                    </div>
+                </div>
+                <div class="input-group" style="margin-top:5px;">
+                    <label for="propElevation" style="font-size:11px; color:#cbd5e1;">الارتفاع Z (سم):</label>
+                    <input type="number" id="propElevation" value="0" style="width:100%; padding:4px; border-radius:4px; background:#000; color:#fff; border:1px solid #333;">
+                </div>
+                <button id="btnApplyProps" class="btn-top" style="width:100%; margin-top:8px; background:#00f2fe; color:#000; font-weight:bold;">تطبيق التعديلات</button>
+            </div>
         </main>
 
+        <!-- الشريط الجانبي للأدوات والقوائم -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-scroll-content">
+
+                <!-- التحكم بالطبعات ومقياس الرسم -->
+                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">الطبقات ومقياس الرسم</div>
+                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+                        <label><input type="checkbox" id="layerArchitectural" checked> 🏗️ المعماري والأثاث</label>
+                        <label><input type="checkbox" id="layerPlumbing" checked> 🚰 شبكة السباكة</label>
+                        <label><input type="checkbox" id="layerElectrical" checked> ⚡ شبكة الكهرباء</label>
+                    </div>
+                    <div style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between;">
+                        <label for="scaleFactor" style="font-size: 11px;">المقياس (سم/بكسل):</label>
+                        <input type="number" id="scaleFactor" value="1" min="0.1" step="0.1" style="width: 50px; padding: 2px; text-align: center; background: #000; color: #fff; border: 1px solid #333; border-radius: 4px;">
+                    </div>
+                </div>
 
                 <div class="tools-grid">
                     <button id="btnSelect" class="btn-oval active">👈 تحديد ونقل</button>
@@ -157,7 +219,7 @@
 
                 <!-- مساحات وحجرات معمارية -->
                 <div class="accordion-header" onclick="window.toggleAccordion('roomsSec')">🏛️ مساحات وحجرات معمارية ▾</div>
-                <div class="accordion-content" id="roomsSec">
+                <div class="accordion-content" id="roomsSec" style="display: none;">
                     <button onclick="window.promptAddRoom('حجرة نوم رئيسية')"><span class="icon">🛏️</span> غرفة نوم</button>
                     <button onclick="window.promptAddRoom('حجرة أطفال')"><span class="icon">🧸</span> غرفة أطفال</button>
                     <button onclick="window.promptAddRoom('حجرة استقبال (صالة)')"><span class="icon">🛋️</span> استقبال</button>
@@ -168,27 +230,28 @@
 
                 <!-- مفاتيح وبرايز الإنارة -->
                 <div class="accordion-header" onclick="window.toggleAccordion('electricSec')">💡 مفاتيح ومآخذ الإنارة ▾</div>
-                <div class="accordion-content" id="electricSec">
+                <div class="accordion-content" id="electricSec" style="display: none;">
                     <button onclick="window.addSymbol('single_sw', 'مفتاح أحادي')"><span class="icon">🔘</span> مفتاح أحادي</button>
                     <button onclick="window.addSymbol('double_sw', 'مفتاح ثنائي')"><span class="icon">🎛️</span> مفتاح ثنائي</button>
                     <button onclick="window.addSymbol('triple_sw', 'مفتاح ثلاثي')"><span class="icon">🎚️</span> مفتاح ثلاثي</button>
                     <button onclick="window.addSymbol('two_way_sw', 'مفتاح ديفاتوري')"><span class="icon">🔄</span> ديفاتوري</button>
-                    <button onclick="window.addSymbol('single_socket', 'بريزة احادى')"><span class="icon">🔌</span> بريزة عادية</button>
+                    <button id="addSocket" onclick="window.addSymbol('single_socket', 'بريزة احادى')"><span class="icon">🔌</span> بريزة عادية</button>
                     <button onclick="window.addSymbol('power_socket', 'بريزة مجوفه (قوى)')"><span class="icon">⚡</span> بريزة قوى</button>
                     <button onclick="window.addSymbol('ac_outlet', 'تكييف')"><span class="icon">❄️</span> تكييف</button>
                     <button onclick="window.addSymbol('exhaust_fan', 'شفاط')"><span class="icon">🌀</span> شفاط</button>
                     <button onclick="window.addSymbol('wall_spot', 'اسبوت حائط')"><span class="icon">🎯</span> سبوت حائط</button>
-                    <button onclick="window.addSymbol('lamp', 'لمبه')"><span class="icon">💡</span> لمبة</button>
+                    <button id="addLight" onclick="window.addSymbol('lamp', 'لمبه')"><span class="icon">💡</span> لمبة</button>
                     <button onclick="window.addSymbol('bell', 'جرس')"><span class="icon">🔔</span> جرس</button>
                     <button onclick="window.addSymbol('alarm', 'انذار')"><span class="icon">🚨</span> إنذار</button>
                     <button onclick="window.addSymbol('audio_out', 'مخرج صوت')"><span class="icon">🔊</span> صوت</button>
                     <button onclick="window.addSymbol('data_out', 'داتا')"><span class="icon">🌐</span> داتا</button>
-                    <button onclick="window.addSymbol('panel', 'لوحة توزيع كهرباء رئيسية')"><span class="icon">📦</span> لوحة رئيسية</button>
+                    <button id="addPanel" onclick="window.addSymbol('panel', 'لوحة توزيع كهرباء رئيسية')"><span class="icon">📦</span> لوحة رئيسية</button>
+                    <button id="drawWire" style="grid-column: span 2; background: rgba(250, 204, 21, 0.2); border-color: #facc15; color: #facc15;">⚡ رسم مسار كابل / توصيل</button>
                 </div>
 
                 <!-- التغذية الكهربائية والتأريض -->
                 <div class="accordion-header" onclick="window.toggleAccordion('powerSupplySec')">⚡ التغذية والقواطع والتأريض ▾</div>
-                <div class="accordion-content" id="powerSupplySec">
+                <div class="accordion-content" id="powerSupplySec" style="display: none;">
                     <button onclick="window.addSymbol('main_meter', 'عداد كهرباء رئيسي')"><span class="icon">📟</span> عداد رئيسي</button>
                     <button onclick="window.addSymbol('sub_panel', 'لوحة فرعية')"><span class="icon">🔲</span> لوحة فرعية</button>
                     <button onclick="window.addSymbol('mcb_breaker', 'قاطع أوتوماتيك MCB')"><span class="icon">🔌</span> قاطع MCB</button>
@@ -205,18 +268,39 @@
 
                 <!-- نجارة وأبواب -->
                 <div class="accordion-header" onclick="window.toggleAccordion('carpentrySec')">🚪 نجارة (أبواب وشبابيك) ▾</div>
-                <div class="accordion-content" id="carpentrySec">
-                    <button onclick="window.addSymbol('door', 'باب مفرد مفصلي')"><span class="icon">🚪</span> باب مفرد</button>
+                <div class="accordion-content" id="carpentrySec" style="display: none;">
+                    <button id="addDoor" onclick="window.addSymbol('door', 'باب مفرد مفصلي')"><span class="icon">🚪</span> باب مفرد</button>
                     <button onclick="window.addSymbol('door_double', 'باب دبل عريض')"><span class="icon">🚪🚪</span> باب دبل</button>
                     <button onclick="window.addSymbol('door_sliding', 'باب جرار سحب')"><span class="icon">↔️</span> باب جرار</button>
-                    <button onclick="window.addSymbol('window', 'شباك زجاجي مفرد')"><span class="icon">🪟</span> شباك مفرد</button>
+                    <button id="addWindow" onclick="window.addSymbol('window', 'شباك زجاجي مفرد')"><span class="icon">🪟</span> شباك مفرد</button>
                     <button onclick="window.addSymbol('window_double', 'شباك زجاجي دبل')"><span class="icon">🖼️</span> شباك دبل</button>
                     <button onclick="window.addSymbol('balcony', 'بلكون / تراس')"><span class="icon">🏛️</span> بلكون</button>
                 </div>
 
-                <!-- سباكة وصحي -->
-                <div class="accordion-header" onclick="window.toggleAccordion('plumbingSec')">🚰 سباكة ومستلزمات صحية ▾</div>
-                <div class="accordion-content" id="plumbingSec">
+                <!-- سباكة ومستلزمات صحية وخطوط أنابيب MEP -->
+                <div class="accordion-header" onclick="window.toggleAccordion('plumbingSec')">🚰 سباكة ومستلزمات صحية وقطع توصيل ▾</div>
+                <div class="accordion-content" id="plumbingSec" style="display: none;">
+                    <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px;">
+                        <label for="pipeSize" style="font-size: 11px; color: #00f2fe;">مقاس الأنبوب / القطعة:</label>
+                        <select id="pipeSize" style="width: 100%; padding: 4px; border-radius: 4px; background: #000; color: #fff; border: 1px solid #333;">
+                            <option value="0.5">1/2 بوصة</option>
+                            <option value="0.75" selected>3/4 بوصة</option>
+                            <option value="1.0">1 بوصة</option>
+                            <option value="1.5">1.5 بوصة</option>
+                            <option value="2.0">2 بوصة</option>
+                            <option value="4.0">4 بوصة (صرف)</option>
+                        </select>
+                    </div>
+                    <button id="addElbow90"><span class="icon">↩️</span> كوع 90°</button>
+                    <button id="addElbow45"><span class="icon">↖️</span> كوع 45°</button>
+                    <button id="addTee"><span class="icon">🔀</span> مشترك T</button>
+                    <button id="addCoupling"><span class="icon">🔗</span> جلبة توصيل</button>
+                    <button id="addValve"><span class="icon">🚰</span> محبس رئيسي</button>
+
+                    <button id="drawColdPipe" style="background: rgba(6, 182, 212, 0.2); border-color: #06b6d4; color: #06b6d4;"><span class="icon">🔵</span> خط بارد</button>
+                    <button id="drawHotPipe" style="background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444;"><span class="icon">🔴</span> خط ساخن</button>
+                    <button id="drawDrainPipe" style="background: rgba(107, 114, 128, 0.2); border-color: #6b7280; color: #cbd5e1; grid-column: span 2;"><span class="icon">⚪</span> خط صرف صحي</button>
+
                     <button onclick="window.addSymbol('sink', 'حوض وجه ومغسلة')"><span class="icon">🚰</span> حوض غسيل</button>
                     <button onclick="window.addSymbol('toilet', 'مرحاض (كرسي حمام)')"><span class="icon">🚽</span> مرحاض</button>
                     <button onclick="window.addSymbol('shower', 'دش استحمام ومقصورة')"><span class="icon">🚿</span> دش استحمام</button>
@@ -226,18 +310,19 @@
 
                 <!-- أثاث وتجهيزات -->
                 <div class="accordion-header" onclick="window.toggleAccordion('furnitureSec')">🛋️ أثاث وتجهيزات منزلية ▾</div>
-                <div class="accordion-content" id="furnitureSec">
+                <div class="accordion-content" id="furnitureSec" style="display: none;">
                     <button onclick="window.addSymbol('wooden_chair', 'كرسي خشب')"><span class="icon">🪑</span> كرسي خشب</button>
                     <button onclick="window.addSymbol('armchair', 'كرسي انتريه')"><span class="icon">🛋️</span> كرسي أنتريه</button>
-                    <button onclick="window.addSymbol('sofa', 'كنبة')"><span class="icon">🛋️</span> كنبة</button>
+                    <button id="addSofa" onclick="window.addSymbol('sofa', 'كنبة')"><span class="icon">🛋️</span> كنبة</button>
                     <button onclick="window.addSymbol('table', 'طاولة')"><span class="icon">🪵</span> طاولة</button>
                     <button onclick="window.addSymbol('wardrobe', 'دولاب')"><span class="icon">🗄️</span> دولاب</button>
                     <button onclick="window.addSymbol('stove', 'بوتاجاز')"><span class="icon">🍳</span> بوتاجاز</button>
                     <button onclick="window.addSymbol('water_heater', 'سخان')"><span class="icon">🔥</span> سخان</button>
                     <button onclick="window.addSymbol('tv_screen', 'شاشة')"><span class="icon">📺</span> شاشة</button>
-                    <button onclick="window.addSymbol('bed', 'سرير نوم رئيسي')"><span class="icon">🛏️</span> سرير نوم</button>
+                    <button id="addBed" onclick="window.addSymbol('bed', 'سرير نوم رئيسي')"><span class="icon">🛏️</span> سرير نوم</button>
                 </div>
 
+                <!-- شريط الحصر الآلي المصغر -->
                 <div class="inventory-panel" style="margin-top: 10px;">
                     <div class="inventory-title">
                         <span>📊 الحصر الآلي للرموز والكميات</span>
