@@ -5,6 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SNelectric - مولد المساحات والمخططات المعمارية الذكية و MEP</title>
 
+    <!-- ربط المانفيست والخطوط للشاشة الافتتاحية -->
+    <link rel="manifest" href="manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+
+    <!-- CSS الشاشة الافتتاحية والتنسيقات الأساسية -->
+    <style>
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #2b303c 0%, #12151b 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999999;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+            font-family: 'Montserrat', sans-serif;
+            direction: ltr;
+        }
+
+        .glass-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 330px;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            transform: skewX(-25deg);
+            animation: shine 4s infinite;
+        }
+
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 200%; }
+            100% { left: 200%; }
+        }
+
+        .svg-container { width: 260px; height: 130px; overflow: visible; }
+        .svg-text { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 110px; }
+
+        .part-s { fill: #0088ff; opacity: 0; transform-origin: 50px 70px; animation: pulseIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 0.2s; filter: drop-shadow(0 2px 8px rgba(0, 136, 255, 0.4)); }
+        .part-bolt { fill: #f5b813; opacity: 0; transform-origin: 130px 65px; animation: pulseIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 0.8s; filter: drop-shadow(0 2px 10px rgba(245, 184, 19, 0.6)); }
+        .part-n { fill: #ff3344; opacity: 0; transform-origin: 200px 70px; animation: pulseIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 1.4s; filter: drop-shadow(0 2px 8px rgba(255, 51, 68, 0.4)); }
+
+        @keyframes pulseIn {
+            0% { opacity: 0; transform: scale(0.1); }
+            60% { opacity: 1; transform: scale(1.25); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .text-section { display: flex; flex-direction: column; align-items: center; margin-top: 5px; width: 100%; }
+        .brand-title { font-size: 26px; font-weight: 900; letter-spacing: 2px; display: flex; align-items: center; gap: 8px; }
+        .sn-part { color: #ffffff; opacity: 0; transform-origin: center; animation: pulseIn 0.6s ease-out forwards; animation-delay: 2.0s; }
+        .electric-part { display: flex; }
+
+        .electric-part span {
+            display: inline-block;
+            opacity: 0;
+            transform-origin: center;
+            animation: letterPulse 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, colorShift 0.2s linear infinite alternate;
+        }
+
+        .electric-part span:nth-child(1) { animation-delay: 2.2s, 0.00s; }
+        .electric-part span:nth-child(2) { animation-delay: 2.3s, 0.03s; }
+        .electric-part span:nth-child(3) { animation-delay: 2.4s, 0.06s; }
+        .electric-part span:nth-child(4) { animation-delay: 2.5s, 0.09s; }
+        .electric-part span:nth-child(5) { animation-delay: 2.6s, 0.12s; }
+        .electric-part span:nth-child(6) { animation-delay: 2.7s, 0.15s; }
+        .electric-part span:nth-child(7) { animation-delay: 2.8s, 0.18s; }
+        .electric-part span:nth-child(8) { animation-delay: 2.9s, 0.21s; }
+
+        @keyframes letterPulse {
+            0% { opacity: 0; transform: scale(0.2); }
+            70% { opacity: 1; transform: scale(1.35); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes colorShift {
+            0% { color: #ff3344; }
+            33% { color: #00aaff; }
+            66% { color: #ffcc00; }
+            100% { color: #00e676; }
+        }
+
+        .line-divider { width: 90%; height: 2px; background: linear-gradient(90deg, transparent, #f5b813, transparent); margin: 8px 0; opacity: 0; animation: fadeIn 0.5s ease-out forwards; animation-delay: 3.1s; }
+        .tagline { font-size: 11px; font-weight: 800; color: #f5b813; letter-spacing: 4px; opacity: 0; animation: fadeIn 0.5s ease-out forwards; animation-delay: 3.3s; }
+        
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        .splash-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+    </style>
+
     <!-- المكتبات الخارجية -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -12,7 +128,6 @@
     
     <!-- ملف الـ CSS الخارجي والبيانات -->
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <script>
       if ('serviceWorker' in navigator) {
@@ -21,6 +136,37 @@
     </script>
 </head>
 <body>
+
+    <!-- الشاشة الافتتاحية -->
+    <div id="splash-screen">
+        <div class="glass-card">
+            <svg class="svg-container" viewBox="0 0 260 130">
+                <text x="15" y="100" class="svg-text part-s">S</text>
+                <polygon class="part-bolt" points="135,10 95,70 128,70 102,120 155,52 122,52"/>
+                <text x="150" y="100" class="svg-text part-n">N</text>
+            </svg>
+            <div class="text-section">
+                <div class="brand-title">
+                    <span class="sn-part">SN</span>
+                    <span class="electric-part">
+                        <span>E</span><span>L</span><span>E</span><span>C</span><span>T</span><span>R</span><span>I</span><span>C</span>
+                    </span>
+                </div>
+                <div class="line-divider"></div>
+                <div class="tagline">POWERED BY PRECISION</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- سكريبت إخفاء الشاشة بعد 5 ثوانٍ -->
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash) splash.classList.add('splash-hidden');
+            }, 5000);
+        });
+    </script>
 
     <input type="file" id="fileInputJSON" accept=".json" style="display: none;" />
 
