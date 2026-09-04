@@ -1,6 +1,6 @@
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open('sn-ping-store').then((cache) => {
+    caches.open('sn-ping-store v0.1').then((cache) => {
       return cache.addAll(['./index.html', './style.css', './script.js']);
     })
   );
