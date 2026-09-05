@@ -25,6 +25,25 @@ document.addEventListener('DOMContentLoaded', () => {
     initGlobalEventListeners();
     init3D();
     updateInventorySummary();
+
+    // 1. تشغيل القوائم المنسدلة (Accordion) بدون تعارض
+    const accordionHeaders = document.querySelectorAll('.accordion-header');
+    accordionHeaders.forEach(header => {
+        header.onclick = function(e) {
+            e.stopPropagation();
+            const content = this.nextElementSibling;
+            if (content && content.classList.contains('accordion-content')) {
+                const isHidden = getComputedStyle(content).display === 'none';
+                content.style.display = isHidden ? 'grid' : 'none';
+            }
+        };
+    });
+
+    // 2. إخفاء أي شاشة افتتاحية إن وجدت نهائياً
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+        splash.remove();
+    }
 });
 
 /* ==========================================================================
@@ -575,6 +594,11 @@ window.closeRoomModal = function() {
 
 window.closeModal = function() {
     const modal = document.getElementById('dimensionsModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.closeInventoryModal = function() {
+    const modal = document.getElementById('inventoryModal');
     if (modal) modal.classList.add('hidden');
 };
 
