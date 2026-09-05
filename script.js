@@ -1,839 +1,1211 @@
 /* ==========================================================================
-   SNelectric & MEP Planner Engine v2.0 - Complete Edition
+   S⚡N electric MEP Engine v3.5 - Ultimate Combined Engine
+   Combines Core Simulation (v3.0) & Advanced BIM 3D / Touch Logic (v3.3)
    ========================================================================== */
 
-let canvas;
-let undoStack = [];
-let redoStack = [];
-let isPerformingHistoryAction = false;
+// --- 1. Global Engine State & Variables ---
+const EngineState = {
+  mode: 'design', // 'design' | 'simulation'
+  scaleMm: 10,     // 1px = 10mm
+  gridStepMm: 100, // 100mm
+  snapToGrid: true,
+  historyStack: [],
+  selectedColor: { stroke: '#00f2fe', fill: '#0284c7' },
 
-// Drawing State (Pipes & Wires)
+  // لوحة الكهرباء والمحاكاة
+  panelState: {
+    mainBreaker: false,
+    branches: { 1: false, 2: false, 3: false, 4: false }
+  },
+  simulationMetrics: {
+    totalCurrentA: 0.0,
+    totalPowerKW: 0.0,
+    waterPressureBar: 0.0,
+    statusText: 'الجهاز جاهز لإنشاء أو تشغيل المخطط'
+  },
+  pendingRoomData: null
+};
+
+// Canvas & 3D Variables
+let canvas = null;
+let scene = null, camera = null, renderer = null, controls = null, roomMeshGroup = null;
+let is3DActive = false;
+let animFrameId = null;
+
+// Touch & Drawing Variables
 let isDrawingLine = false;
 let currentLine = null;
-let currentLineType = null; // 'cold_pipe', 'hot_pipe', 'drain_pipe', 'wire'
-let currentFont = 'Arial';
+let currentLineType = null;
+let isDragging = false;
+let lastPosX = 0;
+let lastPosY = 0;
+const interactive3DObjects = [];
 
-// Three.js 3D Variables
-let scene, camera, renderer, controls;
-let isInteriorView = false;
-let roomMeshGroup = new THREE.Group();
-
-// Initialize Application
-document.addEventListener('DOMContentLoaded', () => {
-    initCanvas();
-    initLayers();
-    initGlobalEventListeners();
-    init3D();
-    updateInventorySummary();
-
-    // 1. تشغيل القوائم المنسدلة (Accordion) بدون تعارض
-    const accordionHeaders = document.querySelectorAll('.accordion-header');
-    accordionHeaders.forEach(header => {
-        header.onclick = function(e) {
-            e.stopPropagation();
-            const content = this.nextElementSibling;
-            if (content && content.classList.contains('accordion-content')) {
-                const isHidden = getComputedStyle(content).display === 'none';
-                content.style.display = isHidden ? 'grid' : 'none';
-            }
-        };
-    });
-
-    // 2. إخفاء أي شاشة افتتاحية إن وجدت نهائياً
-    const splash = document.getElementById('splash-screen');
-    if (splash) {
-        splash.remove();
-    }
+// --- 2. Engine Initialization ---
+window.addEventListener('DOMContentLoaded', () => {
+  initSplashScreen();
+  initCanvas2D();
+  init3DScene();
+  setupCanvasEvents();
+  setupZoomAndPan();
+  setupEventListeners();
+  updateUIConsole();
+  window.addEventListener('resize', handleResize);
 });
 
-/* ==========================================================================
-   1. Canvas Initialization & Core Events
-   ========================================================================== */
-function initCanvas() {
-    const container = document.getElementById('canvasContainer');
-    canvas = new fabric.Canvas('drawCanvas', {
-        width: container ? container.clientWidth : 800,
-        height: container ? container.clientHeight : 600,
-        backgroundColor: '#0a0a14',
-        selection: true
-    });
-
-    saveState();
-
-    // Canvas Event Handling
-    canvas.on('object:modified', saveState);
-    canvas.on('object:added', () => { 
-        if (!isPerformingHistoryAction) saveState(); 
-        updateInventorySummary();
-    });
-    canvas.on('object:removed', () => {
-        if (!isPerformingHistoryAction) saveState();
-        updateInventorySummary();
-    });
-
-    canvas.on('selection:created', onObjectSelected);
-    canvas.on('selection:updated', onObjectSelected);
-    canvas.on('selection:cleared', () => {
-        const panel = document.getElementById('propertiesPanel');
-        if (panel) panel.classList.add('hidden');
-        const floatingGroup = document.getElementById('floatingActionGroup');
-        if (floatingGroup) floatingGroup.style.display = 'none';
-    });
-
-    // Pipe / Wire Interactive Drawing Listeners
-    canvas.on('mouse:down', startDrawingLine);
-    canvas.on('mouse:move', keepDrawingLine);
-    canvas.on('mouse:up', stopDrawingLine);
-
-    window.addEventListener('resize', () => {
-        const parent = document.getElementById('canvasContainer');
-        if (parent) {
-            canvas.setWidth(parent.clientWidth);
-            canvas.setHeight(parent.clientHeight);
-            canvas.renderAll();
-        }
-    });
-}
-
-/* ==========================================================================
-   2. State Management (Undo / Redo Mechanism)
-   ========================================================================== */
-function saveState() {
-    if (isPerformingHistoryAction) return;
-    const json = JSON.stringify(canvas.toJSON([
-        'nameTag', 'symbolType', 'pipeSize', 'layerType', 
-        'elevationZ', 'realWidth', 'realHeight', 'isLine', 'lineLength'
-    ]));
-    undoStack.push(json);
-    redoStack = [];
-    updateUndoRedoButtons();
-}
-
-function updateUndoRedoButtons() {
-    const btnUndo = document.getElementById('btnUndo');
-    const btnRedo = document.getElementById('btnRedo');
-    if (btnUndo) btnUndo.disabled = undoStack.length <= 1;
-    if (btnRedo) btnRedo.disabled = redoStack.length === 0;
-}
-
-function performUndo() {
-    if (undoStack.length > 1) {
-        isPerformingHistoryAction = true;
-        redoStack.push(undoStack.pop());
-        const previousState = undoStack[undoStack.length - 1];
-        
-        canvas.loadFromJSON(previousState, () => {
-            canvas.renderAll();
-            isPerformingHistoryAction = false;
-            updateUndoRedoButtons();
-            updateInventorySummary();
-        }, restoreCustomProperties);
+function initSplashScreen() {
+  setTimeout(() => {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      splash.classList.add('splash-hidden', 'fade-out');
+      setTimeout(() => splash.remove(), 500);
     }
+  }, 1500);
 }
 
-function performRedo() {
-    if (redoStack.length > 0) {
-        isPerformingHistoryAction = true;
-        const nextState = redoStack.pop();
-        undoStack.push(nextState);
+// --- 3. 2D Fabric.js Engine & Grid System ---
+function initCanvas2D() {
+  const container = document.getElementById('canvas2DContainer');
+  const canvasElem = document.getElementById('mepCanvas');
 
-        canvas.loadFromJSON(nextState, () => {
-            canvas.renderAll();
-            isPerformingHistoryAction = false;
-            updateUndoRedoButtons();
-            updateInventorySummary();
-        }, restoreCustomProperties);
-    }
+  if (!container || !canvasElem) return;
+
+  canvasElem.width = container.clientWidth;
+  canvasElem.height = container.clientHeight;
+
+  canvas = new fabric.Canvas('mepCanvas', {
+    width: container.clientWidth,
+    height: container.clientHeight,
+    backgroundColor: '#020617',
+    selection: true,
+    preserveObjectStacking: true
+  });
+
+  drawGrid();
+  saveCanvasState();
 }
 
-function restoreCustomProperties(o, object) {
-    object.nameTag = o.nameTag;
-    object.symbolType = o.symbolType;
-    object.pipeSize = o.pipeSize;
-    object.layerType = o.layerType;
-    object.elevationZ = o.elevationZ;
-    object.realWidth = o.realWidth;
-    object.realHeight = o.realHeight;
-    object.isLine = o.isLine;
-    object.lineLength = o.lineLength;
-}
+function drawGrid() {
+  if (!canvas) return;
+  const gridPx = EngineState.gridStepMm / EngineState.scaleMm;
+  const width = canvas.width * 5;
+  const height = canvas.height * 5;
 
-/* ==========================================================================
-   3. Element Generators (Furniture, Symbols & Real-Scale Rectangles)
-   ========================================================================== */
-window.createScaledRect = function(widthCm, heightCm, color, name, layer, extraProps = {}) {
-    const scaleElem = document.getElementById('scaleFactor');
-    const scale = scaleElem ? (parseFloat(scaleElem.value) || 1) : 1;
+  const existingGrid = canvas.getObjects().filter(obj => obj.isGridLine);
+  existingGrid.forEach(obj => canvas.remove(obj));
 
-    const rect = new fabric.Rect({
-        left: canvas.width / 2 - (widthCm * scale) / 2,
-        top: canvas.height / 2 - (heightCm * scale) / 2,
-        width: widthCm * scale,
-        height: heightCm * scale,
-        fill: color,
-        stroke: '#ffffff',
-        strokeWidth: 1,
-        cornerColor: '#00f2fe',
-        hasControls: true
+  if (!EngineState.snapToGrid) return;
+
+  for (let x = -width; x < width; x += gridPx) {
+    const line = new fabric.Line([x, -height, x, height], {
+      stroke: '#1e293b',
+      strokeWidth: 1,
+      selectable: false,
+      evented: false,
+      isGridLine: true
     });
+    canvas.add(line);
+    canvas.sendToBack(line);
+  }
 
-    rect.nameTag = name;
-    rect.layerType = layer;
-    rect.realWidth = widthCm;
-    rect.realHeight = heightCm;
-    rect.elevationZ = extraProps.elevationZ || 0;
-    rect.symbolType = extraProps.symbolType || 'generic';
-    rect.pipeSize = extraProps.pipeSize || null;
+  for (let y = -height; y < height; y += gridPx) {
+    const line = new fabric.Line([-width, y, width, y], {
+      stroke: '#1e293b',
+      strokeWidth: 1,
+      selectable: false,
+      evented: false,
+      isGridLine: true
+    });
+    canvas.add(line);
+    canvas.sendToBack(line);
+  }
+}
 
-    canvas.add(rect);
-    canvas.setActiveObject(rect);
-    canvas.renderAll();
+// --- 4. Catalog & Add Items Logic ---
+window.addCatalogItem = function(category, itemName) {
+  saveCanvasState();
+  if (category === 'architectural' && itemName !== 'منطقة حرة (بدون اسم)') {
+    addArchitecturalSpace(category, itemName);
+  } else {
+    addSymbol(category + '_' + itemName, itemName);
+  }
+  closeAllPopups();
 };
 
-window.addSymbol = function(type, label) {
-    let color = '#00f2fe';
-    let layer = 'electrical';
-    let w = 30, h = 30;
-
-    if (type.includes('door') || type.includes('window') || type.includes('balcony')) {
-        layer = 'architectural';
-        color = '#854d0e';
-        w = 90; h = 15;
-    } else if (type.includes('sink') || type.includes('toilet') || type.includes('shower') || type.includes('bathtub') || type.includes('drain')) {
-        layer = 'plumbing';
-        color = '#06b6d4';
-        w = 60; h = 60;
-    } else if (type.includes('chair') || type.includes('sofa') || type.includes('table') || type.includes('bed') || type.includes('wardrobe')) {
-        layer = 'architectural';
-        color = '#3b82f6';
-        w = 100; h = 100;
-    }
-
-    window.createScaledRect(w, h, color, label, layer, { symbolType: type });
-};
-
-/* ==========================================================================
-   4. Interactive Drawing Engine (Pipes & Wires)
-   ========================================================================== */
-function setDrawingMode(type) {
-    currentLineType = type;
-    canvas.isDrawingMode = false;
-    canvas.selection = false;
-    canvas.defaultCursor = 'crosshair';
+function getShapeLabelConfig(defaultName) {
+  const customLabelInput = document.getElementById('shapeLabelInput');
+  const hideCheckbox = document.getElementById('hideShapeLabelCheckbox');
+  
+  let displayName = (customLabelInput && customLabelInput.value.trim() !== '') 
+    ? customLabelInput.value.trim() 
+    : defaultName;
+      
+  let hideText = hideCheckbox ? hideCheckbox.checked : false;
+  return { displayName, hideText };
 }
 
-function startDrawingLine(o) {
-    if (!currentLineType) return;
-    isDrawingLine = true;
-    const pointer = canvas.getPointer(o.e);
-    const points = [pointer.x, pointer.y, pointer.x, pointer.y];
+window.addArchitecturalSpace = function(roomType, roomName) {
+  if (!canvas) return;
+  const { displayName, hideText } = getShapeLabelConfig(roomName);
+  EngineState.pendingRoomData = { roomType, displayName, hideText };
 
-    let strokeColor = '#2563eb';
-    let strokeWidth = 3;
-    let layer = 'plumbing';
-
-    if (currentLineType === 'cold_pipe') strokeColor = '#06b6d4';
-    else if (currentLineType === 'hot_pipe') strokeColor = '#ef4444';
-    else if (currentLineType === 'drain_pipe') { strokeColor = '#6b7280'; strokeWidth = 6; }
-    else if (currentLineType === 'wire') { strokeColor = '#facc15'; strokeWidth = 2; layer = 'electrical'; }
-
-    const pipeElem = document.getElementById('pipeSize');
-    const size = pipeElem ? pipeElem.value : '0.75';
-
-    currentLine = new fabric.Line(points, {
-        stroke: strokeColor,
-        strokeWidth: strokeWidth,
-        selectable: true,
-        evented: true
-    });
-
-    currentLine.nameTag = `خط توصيل (${currentLineType})`;
-    currentLine.layerType = layer;
-    currentLine.isLine = true;
-    currentLine.pipeSize = size;
-    currentLine.elevationZ = (layer === 'electrical') ? 240 : 20;
-
-    canvas.add(currentLine);
-}
-
-function keepDrawingLine(o) {
-    if (!isDrawingLine || !currentLine) return;
-    const pointer = canvas.getPointer(o.e);
-    currentLine.set({ x2: pointer.x, y2: pointer.y });
-
-    const dx = currentLine.x2 - currentLine.x1;
-    const dy = currentLine.y2 - currentLine.y1;
-    const scaleElem = document.getElementById('scaleFactor');
-    const scale = scaleElem ? (parseFloat(scaleElem.value) || 1) : 1;
-    const lengthCm = Math.sqrt(dx * dx + dy * dy) / scale;
-    currentLine.lineLength = (lengthCm / 100).toFixed(2); // In Meters
-
-    canvas.renderAll();
-}
-
-function stopDrawingLine() {
-    if (!isDrawingLine) return;
-    isDrawingLine = false;
-    currentLine = null;
-    currentLineType = null;
-    canvas.selection = true;
-    canvas.defaultCursor = 'default';
-    saveState();
-}
-
-/* ==========================================================================
-   5. Layer Controls & Property Inspector
-   ========================================================================== */
-function initLayers() {
-    const toggles = {
-        architectural: document.getElementById('layerArchitectural'),
-        plumbing: document.getElementById('layerPlumbing'),
-        electrical: document.getElementById('layerElectrical')
-    };
-
-    Object.keys(toggles).forEach(layer => {
-        if (toggles[layer]) {
-            toggles[layer].addEventListener('change', (e) => {
-                const visible = e.target.checked;
-                canvas.getObjects().forEach(obj => {
-                    if (obj.layerType === layer) {
-                        obj.visible = visible;
-                    }
-                });
-                canvas.renderAll();
-            });
-        }
-    });
-}
-
-function onObjectSelected(e) {
-    const obj = e.selected ? e.selected[0] : null;
-    if (!obj) return;
-
-    const panel = document.getElementById('propertiesPanel');
-    if (panel) {
-        panel.classList.remove('hidden');
-        document.getElementById('propName').value = obj.nameTag || '';
-        document.getElementById('propWidth').value = obj.realWidth || Math.round((obj.width || 0) * (obj.scaleX || 1));
-        document.getElementById('propHeight').value = obj.realHeight || Math.round((obj.height || 0) * (obj.scaleY || 1));
-        document.getElementById('propElevation').value = obj.elevationZ || 0;
-    }
-
-    // Show floating bar
-    const floatingGroup = document.getElementById('floatingActionGroup');
-    if (floatingGroup) {
-        floatingGroup.style.display = 'flex';
-        floatingGroup.style.top = `${obj.top - 50}px`;
-        floatingGroup.style.left = `${obj.left}px`;
-    }
-}
-
-/* ==========================================================================
-   6. UI Global Event Handlers & Tools
-   ========================================================================== */
-function initGlobalEventListeners() {
-    // Undo / Redo Actions
-    document.getElementById('btnUndo')?.addEventListener('click', performUndo);
-    document.getElementById('btnRedo')?.addEventListener('click', performRedo);
-
-    // Tools Setup
-    document.getElementById('btnSelect')?.addEventListener('click', () => {
-        canvas.isDrawingMode = false;
-        currentLineType = null;
-        updateActiveTool('btnSelect');
-    });
-
-    document.getElementById('btnPencil')?.addEventListener('click', () => {
-        canvas.isDrawingMode = true;
-        currentLineType = null;
-        const color = document.getElementById('colorPicker')?.value || '#00f2fe';
-        const width = parseInt(document.getElementById('brushWidth')?.value || '4');
-        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-        canvas.freeDrawingBrush.color = color;
-        canvas.freeDrawingBrush.width = width;
-        updateActiveTool('btnPencil');
-    });
-
-    document.getElementById('btnText')?.addEventListener('click', () => {
-        canvas.isDrawingMode = false;
-        const text = new fabric.IText('نص جديد', {
-            left: canvas.width / 2 - 40,
-            top: canvas.height / 2 - 10,
-            fontFamily: currentFont,
-            fill: document.getElementById('colorPicker')?.value || '#00f2fe',
-            fontSize: 20
-        });
-        text.nameTag = 'نص توضيحي';
-        text.layerType = 'architectural';
-        canvas.add(text);
-        canvas.setActiveObject(text);
-        updateActiveTool('btnSelect');
-    });
-
-    document.getElementById('btnDeleteSegment')?.addEventListener('click', () => {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj) {
-            canvas.remove(activeObj);
-            canvas.renderAll();
-        } else {
-            alert('يرجى تحديد العنصر أو الضلع المراد مسحه أولاً');
-        }
-    });
-
-    // Apply Property Changes
-    document.getElementById('btnApplyProps')?.addEventListener('click', () => {
-        const obj = canvas.getActiveObject();
-        if (!obj) return;
-
-        obj.nameTag = document.getElementById('propName').value;
-        obj.elevationZ = parseFloat(document.getElementById('propElevation').value) || 0;
-        
-        const newW = parseFloat(document.getElementById('propWidth').value);
-        const newH = parseFloat(document.getElementById('propHeight').value);
-
-        if (newW && newH && !obj.isLine) {
-            obj.set({
-                scaleX: 1,
-                scaleY: 1,
-                width: newW,
-                height: newH
-            });
-            obj.realWidth = newW;
-            obj.realHeight = newH;
-        }
-
-        canvas.renderAll();
-        saveState();
-    });
-
-    // Color and Brush Dynamics
-    document.getElementById('colorPicker')?.addEventListener('input', (e) => {
-        const color = e.target.value;
-        const circle = document.getElementById('colorCirclePreview');
-        if (circle) circle.style.background = color;
-        if (canvas.isDrawingMode && canvas.freeDrawingBrush) {
-            canvas.freeDrawingBrush.color = color;
-        }
-    });
-
-    document.getElementById('brushWidth')?.addEventListener('input', (e) => {
-        if (canvas.isDrawingMode && canvas.freeDrawingBrush) {
-            canvas.freeDrawingBrush.width = parseInt(e.target.value, 10);
-        }
-    });
-
-    // Plumbing Pipe Drawing Events
-    document.getElementById('drawColdPipe')?.addEventListener('click', () => setDrawingMode('cold_pipe'));
-    document.getElementById('drawHotPipe')?.addEventListener('click', () => setDrawingMode('hot_pipe'));
-    document.getElementById('drawDrainPipe')?.addEventListener('click', () => setDrawingMode('drain_pipe'));
-    document.getElementById('drawWire')?.addEventListener('click', () => setDrawingMode('wire'));
-
-    // Fittings Generators
-    const getPipeSize = () => document.getElementById('pipeSize')?.value || '0.75';
-
-    document.getElementById('addElbow90')?.addEventListener('click', () => {
-        const sz = getPipeSize();
-        window.createScaledRect(15, 15, '#06b6d4', `كوع 90° (${sz}")`, 'plumbing', { pipeSize: sz, symbolType: 'fitting' });
-    });
-
-    document.getElementById('addElbow45')?.addEventListener('click', () => {
-        const sz = getPipeSize();
-        window.createScaledRect(12, 12, '#0891b2', `كوع 45° (${sz}")`, 'plumbing', { pipeSize: sz, symbolType: 'fitting' });
-    });
-
-    document.getElementById('addTee')?.addEventListener('click', () => {
-        const sz = getPipeSize();
-        window.createScaledRect(20, 15, '#0284c7', `مشترك T (${sz}")`, 'plumbing', { pipeSize: sz, symbolType: 'fitting' });
-    });
-
-    document.getElementById('addCoupling')?.addEventListener('click', () => {
-        const sz = getPipeSize();
-        window.createScaledRect(10, 10, '#0369a1', `جلبة (${sz}")`, 'plumbing', { pipeSize: sz, symbolType: 'fitting' });
-    });
-
-    document.getElementById('addValve')?.addEventListener('click', () => {
-        window.createScaledRect(15, 15, '#b91c1c', 'محبس رئيسي', 'plumbing', { elevationZ: 50, symbolType: 'valve' });
-    });
-
-    // Floating Action Toolbar
-    document.getElementById('floatingDeleteBtn')?.addEventListener('click', () => {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj) {
-            canvas.remove(activeObj);
-            const fg = document.getElementById('floatingActionGroup');
-            if (fg) fg.style.display = 'none';
-        }
-    });
-
-    document.getElementById('floatingDuplicateBtn')?.addEventListener('click', () => {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj) {
-            activeObj.clone((cloned) => {
-                cloned.set({ left: activeObj.left + 20, top: activeObj.top + 20 });
-                canvas.add(cloned);
-                canvas.setActiveObject(cloned);
-            });
-        }
-    });
-
-    document.getElementById('elementColorPicker')?.addEventListener('input', (e) => {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj) {
-            activeObj.set('fill', e.target.value);
-            canvas.renderAll();
-        }
-    });
-
-    // Export and Save Action Events
-    document.getElementById('btnSave')?.addEventListener('click', () => {
-        const modal = document.getElementById('dimensionsModal');
-        if (modal) modal.classList.remove('hidden');
-    });
-
-    // Inventory BOM Triggers
-    document.getElementById('btnInventory')?.addEventListener('click', renderFullBOMTable);
-
-    // Canvas Tools & Clear
-    document.getElementById('btnClear')?.addEventListener('click', () => {
-        if (confirm('هل أنت تأكد من مسح كافة العناصر باللوحة؟')) {
-            canvas.clear();
-            canvas.setBackgroundColor('#0a0a14', canvas.renderAll.bind(canvas));
-            saveState();
-        }
-    });
-
-    // Reset Zoom / Center Focus
-    document.getElementById('btnResetZoom')?.addEventListener('click', () => {
-        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    });
-}
-
-function updateActiveTool(activeBtnId) {
-    ['btnSelect', 'btnPencil'].forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            if (id === activeBtnId) btn.classList.add('active');
-            else btn.classList.remove('active');
-        }
-    });
-}
-
-/* ==========================================================================
-   7. Accordion & Modal Navigation Helpers
-   ========================================================================== */
-window.toggleAccordion = function(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    
-    const isHidden = window.getComputedStyle(el).display === 'none';
-    
-    document.querySelectorAll('.accordion-content').forEach(acc => {
-        acc.style.display = 'none';
-    });
-
-    if (isHidden) {
-        el.style.display = 'grid';
-    }
-};
-
-window.toggleDropdown = function(id) {
-    const el = document.getElementById(id);
-    if (el) {
-        const isHidden = window.getComputedStyle(el).display === 'none';
-        el.style.display = isHidden ? 'block' : 'none';
-    }
-};
-
-window.setFont = function(fontName, label) {
-    currentFont = fontName;
-    const labelEl = document.getElementById('fontLabel');
-    if (labelEl) labelEl.innerText = `الخط: ${label} ▾`;
-    window.toggleDropdown('fontDropdown');
-
-    const activeObj = canvas.getActiveObject();
-    if (activeObj && activeObj.type === 'i-text') {
-        activeObj.set('fontFamily', fontName);
-        canvas.renderAll();
-    }
-};
-
-window.setBrush = function(type, label) {
-    const labelEl = document.getElementById('brushLabel');
-    if (labelEl) labelEl.innerText = `نوع القلم: ${label} ▾`;
-    window.toggleDropdown('brushDropdown');
-
-    canvas.isDrawingMode = true;
-    const color = document.getElementById('colorPicker')?.value || '#00f2fe';
-    const width = parseInt(document.getElementById('brushWidth')?.value || '4');
-
-    if (type === 'dotted') {
-        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-        canvas.freeDrawingBrush.strokeDashArray = [5, 10];
-    } else if (type === 'highlighter') {
-        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-        canvas.freeDrawingBrush.color = color + '80'; // Transparency
-    } else {
-        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-    }
-
-    canvas.freeDrawingBrush.color = (type === 'highlighter') ? color + '80' : color;
-    canvas.freeDrawingBrush.width = width;
-};
-
-window.promptAddRoom = function(title) {
-    const titleEl = document.getElementById('roomModalTitle');
-    if (titleEl) titleEl.innerText = `🏠 إدخال أبعاد ${title}`;
-    const modal = document.getElementById('roomInputModal');
-    if (modal) modal.classList.remove('hidden');
+  const modalName = document.getElementById('modalRoomName');
+  const modal = document.getElementById('roomDimensionModal');
+  
+  if (modalName) modalName.innerText = displayName;
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
 };
 
 window.closeRoomModal = function() {
-    const modal = document.getElementById('roomInputModal');
-    if (modal) modal.classList.add('hidden');
+  const modal = document.getElementById('roomDimensionModal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+  EngineState.pendingRoomData = null;
 };
 
-window.closeModal = function() {
-    const modal = document.getElementById('dimensionsModal');
-    if (modal) modal.classList.add('hidden');
+window.confirmRoomDimensions = function() {
+  if (!EngineState.pendingRoomData || !canvas) return;
+
+  const widthInput = document.getElementById('roomWidthInput');
+  const lengthInput = document.getElementById('roomLengthInput');
+  const heightInput = document.getElementById('roomHeightInput');
+
+  const width = parseFloat(widthInput ? widthInput.value : 400) || 400;
+  const height = parseFloat(lengthInput ? lengthInput.value : 300) || 300;
+  const wallHeight = parseFloat(heightInput ? heightInput.value : 280) || 280;
+
+  const { displayName, hideText } = EngineState.pendingRoomData;
+  const center = canvas.getVpCenter();
+
+  let strokeColor = EngineState.selectedColor.stroke;
+  if (displayName.includes('نوم')) strokeColor = '#38bdf8'; 
+  if (displayName.includes('حمام')) strokeColor = '#f43f5e'; 
+  if (displayName.includes('مطبخ')) strokeColor = '#eab308'; 
+  if (displayName.includes('استقبال')) strokeColor = '#22c55e'; 
+
+  const roomRect = new fabric.Rect({
+    width: width, height: height, fill: 'rgba(30, 41, 59, 0.3)',
+    stroke: strokeColor, strokeWidth: 3, rx: 4, ry: 4, 
+    originX: 'center', originY: 'center'
+  });
+
+  const roomLabel = new fabric.Text(`${displayName}\n${width}x${height} cm\nارتفاع: ${wallHeight}cm`, {
+    fontSize: 13, fontWeight: 'bold', fill: '#ffffff', 
+    textAlign: 'center', originX: 'center', originY: 'center', fontFamily: 'Segoe UI',
+    visible: !hideText
+  });
+
+  const group = new fabric.Group([roomRect, roomLabel], {
+    left: center.x, top: center.y, originX: 'center', originY: 'center'
+  });
+
+  group.mepType = 'architectural';
+  group.mepName = displayName;
+  group.nameTag = displayName;
+  group.symbolType = 'architectural'; 
+  group.roomWallHeight = wallHeight;
+  group.roomWidth = width;
+  group.roomHeight = height;
+
+  canvas.add(group);
+  canvas.bringToFront(group);
+  group.setCoords();
+  canvas.setActiveObject(group);
+
+  saveCanvasState();
+  canvas.requestRenderAll();
+  closeRoomModal();
 };
 
-window.closeInventoryModal = function() {
-    const modal = document.getElementById('inventoryModal');
-    if (modal) modal.classList.add('hidden');
-};
+window.addSymbol = function(type, name) {
+  if (!canvas) return;
+  
+  const { displayName, hideText } = getShapeLabelConfig(name);
+  const center = canvas.getVpCenter();
+  let shapes = [];
+  const color = EngineState.selectedColor.stroke;
 
-window.confirmAddRoom = function() {
-    const l = (parseFloat(document.getElementById('inputRoomLength').value) || 4) * 100;
-    const w = (parseFloat(document.getElementById('inputRoomWidth').value) || 3) * 100;
-    window.createScaledRect(l, w, 'rgba(0, 242, 254, 0.08)', 'غرفة معمارية', 'architectural');
-    window.closeRoomModal();
-};
+  let mepCategory = 'general';
+  let loadA = 0.5;
 
-window.saveFinalImage = function() {
-    const dataURL = canvas.toDataURL({
-        format: 'png',
-        quality: 1.0
+  if (type.includes('switch') || displayName.includes('مفتاح')) {
+    mepCategory = 'electrical';
+    const c = new fabric.Circle({ radius: 12, fill: 'transparent', stroke: '#f5b813', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const l1 = new fabric.Line([0, -12, 0, -22], { stroke: '#f5b813', strokeWidth: 2 });
+    const l2 = new fabric.Line([0, -22, 8, -22], { stroke: '#f5b813', strokeWidth: 2 });
+    shapes.push(c, l1, l2);
+  } else if (type.includes('socket') || displayName.includes('بريزة')) {
+    mepCategory = 'electrical';
+    loadA = 10.0;
+    const c = new fabric.Circle({ radius: 14, fill: 'transparent', stroke: '#f5b813', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const l1 = new fabric.Line([-14, 0, 14, 0], { stroke: '#f5b813', strokeWidth: 2 });
+    const l2 = new fabric.Line([0, 0, 0, 18], { stroke: '#f5b813', strokeWidth: 2 });
+    shapes.push(c, l1, l2);
+  } else if (type.includes('light') || displayName.includes('لمبة') || displayName.includes('سبوت')) {
+    mepCategory = 'electrical';
+    loadA = 0.2;
+    const c = new fabric.Circle({ radius: 15, fill: 'transparent', stroke: '#00f2fe', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const l1 = new fabric.Line([-10, -10, 10, 10], { stroke: '#00f2fe', strokeWidth: 2 });
+    const l2 = new fabric.Line([10, -10, -10, 10], { stroke: '#00f2fe', strokeWidth: 2 });
+    shapes.push(c, l1, l2);
+  } else if (type.includes('carpentry') || displayName.includes('باب') || displayName.includes('شباك')) {
+    mepCategory = 'carpentry';
+    const isWindow = displayName.includes('شباك');
+    const dWidth = 90;
+    const wallThick2D = 10;
+
+    const mask = new fabric.Rect({
+      width: dWidth, height: wallThick2D + 4,
+      fill: '#020617', originX: 'center', originY: 'center', is2DMask: true
     });
-    const link = document.createElement('a');
-    link.download = 'SN_Plan_Export.png';
-    link.href = dataURL;
-    link.click();
-    window.closeModal();
-};
+    const frame = new fabric.Rect({
+      width: dWidth, height: wallThick2D,
+      fill: isWindow ? 'rgba(0, 242, 254, 0.3)' : 'transparent',
+      stroke: isWindow ? '#00f2fe' : '#ff4757', strokeWidth: 2,
+      originX: 'center', originY: 'center'
+    });
 
-window.openSmartDistributor = function() {
-    alert('⚡ تم تشغيل نظام التوزيع التلقائي للدوائر والقواطع بنجاح!');
-};
-
-/* ==========================================================================
-   8. Three.js 3D Engine & Projection System
-   ========================================================================== */
-function init3D() {
-    const container = document.getElementById('container3D');
-    if (!container || typeof THREE === 'undefined') return;
-
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x05050a);
-
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 5000);
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(renderer.domElement);
-
-    if (typeof THREE.OrbitControls !== 'undefined') {
-        controls = new THREE.OrbitControls(camera, renderer.domElement);
-    }
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-    dirLight.position.set(300, 800, 500);
-    scene.add(dirLight);
-
-    scene.add(roomMeshGroup);
-
-    function animate() {
-        requestAnimationFrame(animate);
-        if (controls) controls.update();
-        renderer.render(scene, camera);
-    }
-    animate();
-}
-
-document.getElementById('btnView3D')?.addEventListener('click', () => {
-    const modal = document.getElementById('modal3D');
-    if (modal) modal.style.display = 'block';
-    build3DSceneFromCanvas();
-    isInteriorView = false;
-    updateCameraMode();
-});
-
-window.close3DModal = function() {
-    const modal = document.getElementById('modal3D');
-    if (modal) modal.style.display = 'none';
-};
-
-function updateCameraMode() {
-    if (!camera || !controls) return;
-    const btn = document.getElementById('btnToggleCamMode');
-    if (isInteriorView) {
-        camera.position.set(0, 160, 0);
-        controls.target.set(0, 160, -100);
-        if (btn) btn.innerText = "🏠 المنظور: داخلي (Interior)";
+    shapes.push(mask, frame);
+    if (!isWindow) {
+      const arc = new fabric.Circle({
+        radius: dWidth / 2, startAngle: 0, endAngle: Math.PI / 2,
+        fill: 'transparent', stroke: '#ff4757', strokeWidth: 1, strokeDashArray: [3, 3],
+        originX: 'center', originY: 'center'
+      });
+      shapes.push(arc);
     } else {
-        camera.position.set(600, 700, 800);
-        controls.target.set(0, 0, 0);
-        if (btn) btn.innerText = "📷 المنظور: خارجي (Orbit)";
+      const lineMid = new fabric.Line([-dWidth / 2, 0, dWidth / 2, 0], { stroke: '#00f2fe', strokeWidth: 1 });
+      shapes.push(lineMid);
     }
+  } else if (type.includes('furniture') || displayName.includes('سرير') || displayName.includes('كنبة') || displayName.includes('طاولة') || displayName.includes('دولاب')) {
+    mepCategory = 'furniture';
+    let fWidth = 100, fHeight = 100;
+    let strokeCol = '#a855f7';
+
+    if (displayName.includes('سرير')) {
+      fWidth = 160; fHeight = 200;
+      const bedBase = new fabric.Rect({ width: fWidth, height: fHeight, fill: 'rgba(168, 85, 247, 0.15)', stroke: strokeCol, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' });
+      const pillow1 = new fabric.Rect({ width: 60, height: 35, fill: strokeCol, rx: 2, ry: 2, left: -40, top: -75, originX: 'center', originY: 'center' });
+      const pillow2 = new fabric.Rect({ width: 60, height: 35, fill: strokeCol, rx: 2, ry: 2, left: 40, top: -75, originX: 'center', originY: 'center' });
+      shapes.push(bedBase, pillow1, pillow2);
+    } else if (displayName.includes('كنبة')) {
+      fWidth = 180; fHeight = 80;
+      const sofaBase = new fabric.Rect({ width: fWidth, height: fHeight, fill: 'rgba(168, 85, 247, 0.15)', stroke: strokeCol, strokeWidth: 2, rx: 8, ry: 8, originX: 'center', originY: 'center' });
+      const backRest = new fabric.Rect({ width: fWidth - 10, height: 20, fill: strokeCol, rx: 4, ry: 4, top: -25, originX: 'center', originY: 'center' });
+      shapes.push(sofaBase, backRest);
+    } else {
+      const box = new fabric.Rect({ width: 120, height: 80, fill: 'rgba(168, 85, 247, 0.2)', stroke: strokeCol, strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
+      shapes.push(box);
+    }
+  } else if (type.includes('plumbing') || displayName.includes('حوض') || displayName.includes('مرحاض')) {
+    mepCategory = 'plumbing';
+    const outer = new fabric.Rect({ width: 36, height: 36, fill: 'rgba(2, 132, 199, 0.2)', stroke: '#0284c7', strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
+    const inner = new fabric.Circle({ radius: 10, fill: 'transparent', stroke: '#0284c7', strokeWidth: 2, originX: 'center', originY: 'center' });
+    shapes.push(outer, inner);
+  } else if (type.includes('power') || displayName.includes('لوحة') || displayName.includes('قاطع')) {
+    mepCategory = 'power';
+    const isPanel = displayName.includes('لوحة');
+    const box = new fabric.Rect({ width: isPanel ? 50 : 40, height: isPanel ? 30 : 25, fill: 'rgba(245, 184, 19, 0.2)', stroke: '#f5b813', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const diag = new fabric.Line([-20, -12.5, 20, 12.5], { stroke: '#f5b813', strokeWidth: 1.5 });
+    shapes.push(box, diag);
+  } else {
+    const box = new fabric.Rect({ width: 50, height: 30, fill: 'rgba(15, 23, 42, 0.85)', stroke: color, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' });
+    shapes.push(box);
+  }
+
+  const label = new fabric.Text(displayName, {
+    fontSize: 10, fill: '#ffffff', top: 25, originX: 'center', fontFamily: 'Segoe UI',
+    visible: !hideText
+  });
+  shapes.push(label);
+
+  const group = new fabric.Group(shapes, {
+    left: center.x, top: center.y, originX: 'center', originY: 'center'
+  });
+
+  group.mepType = mepCategory;
+  group.mepName = displayName;
+  group.nameTag = displayName;
+  group.symbolType = type;
+  group.doorWidth = 90;
+  group.isOn = false;
+  group.isOpen = false;
+  group.flowActive = false;
+  group.loadCurrent = loadA;
+  group.isPanel = displayName.includes('لوحة');
+
+  canvas.add(group);
+  canvas.bringToFront(group);
+  group.setCoords();
+  canvas.setActiveObject(group);
+
+  saveCanvasState();
+  canvas.requestRenderAll();
+  updateSimulationEngine();
+};
+
+// --- 5. Simulation Logic & Panel Controls ---
+window.setEngineMode = function(mode) {
+  EngineState.mode = mode;
+  
+  const btnDesign = document.getElementById('btn-mode-design');
+  const btnSim = document.getElementById('btn-mode-simulation');
+
+  if (mode === 'simulation') {
+    if (btnSim) btnSim.classList.add('active');
+    if (btnDesign) btnDesign.classList.remove('active');
+    canvas.selection = false;
+    canvas.forEachObject(obj => obj.lockMovementX = obj.lockMovementY = true);
+    EngineState.simulationMetrics.statusText = 'المحاكاة نشطة: اضغط على العناصر لتشغيلها أو فتح اللوحة';
+  } else {
+    if (btnDesign) btnDesign.classList.add('active');
+    if (btnSim) btnSim.classList.remove('active');
+    canvas.selection = true;
+    canvas.forEachObject(obj => obj.lockMovementX = obj.lockMovementY = false);
+    EngineState.simulationMetrics.statusText = 'وضع التصميم: يمكنك إضافة وتعديل العناصر';
+  }
+
+  updateSimulationEngine();
+  canvas.renderAll();
+};
+
+function handleSimulationObjectClick(target) {
+  if (!target || !target.mepType) return;
+
+  if (target.isPanel) {
+    openPanelModal();
+    return;
+  }
+
+  if (target.mepType === 'electrical') {
+    target.isOn = !target.isOn;
+    const shape = target.item(0);
+    if (shape) shape.set('fill', target.isOn ? 'rgba(0, 242, 254, 0.8)' : 'transparent');
+  }
+
+  if (target.mepType === 'carpentry') {
+    target.isOpen = !target.isOpen;
+    target.set('angle', target.isOpen ? 45 : 0);
+  }
+
+  if (target.mepType === 'plumbing') {
+    target.flowActive = !target.flowActive;
+    const shape = target.item(0);
+    if (shape) shape.set('stroke', target.flowActive ? '#00f2fe' : '#0284c7');
+  }
+
+  saveCanvasState();
+  updateSimulationEngine();
+  canvas.renderAll();
+}
+
+function updateSimulationEngine() {
+  let totalCurrent = 0.0;
+  let pressure = 0.0;
+
+  if (!canvas) return;
+  const objects = canvas.getObjects();
+  const isPowerAvailable = EngineState.panelState.mainBreaker;
+
+  objects.forEach(obj => {
+    if (obj.mepType === 'electrical' && obj.isOn && isPowerAvailable) {
+      totalCurrent += (obj.loadCurrent || 0.5);
+    }
+    if (obj.mepType === 'plumbing' && obj.flowActive) {
+      pressure += 1.2;
+    }
+  });
+
+  const totalPower = (totalCurrent * 220) / 1000;
+
+  EngineState.simulationMetrics.totalCurrentA = totalCurrent.toFixed(2);
+  EngineState.simulationMetrics.totalPowerKW = totalPower.toFixed(2);
+  EngineState.simulationMetrics.waterPressureBar = pressure.toFixed(1);
+
+  updateUIConsole();
+}
+
+function updateUIConsole() {
+  const statElem = document.getElementById('sys-status-text');
+  const loadElem = document.getElementById('total-load-text');
+  const pressElem = document.getElementById('total-pressure-text');
+
+  if (statElem) statElem.innerText = EngineState.simulationMetrics.statusText;
+  if (loadElem) loadElem.innerText = `${EngineState.simulationMetrics.totalCurrentA} A / ${EngineState.simulationMetrics.totalPowerKW} kW`;
+  if (pressElem) pressElem.innerText = `${EngineState.simulationMetrics.waterPressureBar} Bar`;
+}
+
+window.openPanelModal = function() {
+  const modal = document.getElementById('panel-modal');
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.closePanelModal = function() {
+  const modal = document.getElementById('panel-modal');
+  if (modal) modal.classList.add('hidden');
+};
+
+window.toggleMainBreaker = function(checked) {
+  EngineState.panelState.mainBreaker = checked;
+  const statusElem = document.getElementById('main-breaker-status');
+  if (statusElem) {
+    statusElem.innerText = checked ? 'يعمل (مغلق)' : 'مفصول (مفتوح)';
+    statusElem.className = checked ? 'status-tag on' : 'status-tag off';
+  }
+  updateSimulationEngine();
+};
+
+window.toggleBranch = function(branchNum, checked) {
+  EngineState.panelState.branches[branchNum] = checked;
+  const ledElem = document.getElementById(`branch-${branchNum}-indicator`);
+  if (ledElem) ledElem.className = checked ? 'indicator-led on' : 'indicator-led off';
+  updateSimulationEngine();
+};
+
+// --- 6. Zoom & Pan & Touch Interaction System ---
+function setupZoomAndPan() {
+  if (!canvas) return;
+
+  canvas.on('mouse:wheel', function (opt) {
+    const delta = opt.e.deltaY;
+    let zoom = canvas.getZoom();
+    zoom *= 0.999 ** delta;
+    if (zoom > 5) zoom = 5;
+    if (zoom < 0.2) zoom = 0.2;
+
+    canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+    opt.e.preventDefault();
+    opt.e.stopPropagation();
+  });
+
+  canvas.on('mouse:down', function (opt) {
+    const evt = opt.e;
+    if (evt.altKey || evt.button === 1) {
+      isDragging = true;
+      canvas.selection = false;
+      lastPosX = evt.clientX;
+      lastPosY = evt.clientY;
+    }
+  });
+
+  canvas.on('mouse:move', function (opt) {
+    if (isDragging) {
+      const e = opt.e;
+      const vpt = canvas.viewportTransform;
+      vpt[4] += e.clientX - lastPosX;
+      vpt[5] += e.clientY - lastPosY;
+      canvas.requestRenderAll();
+      lastPosX = e.clientX;
+      lastPosY = e.clientY;
+    }
+  });
+
+  canvas.on('mouse:up', function () {
+    if (isDragging) {
+      canvas.setViewportTransform(canvas.viewportTransform);
+      isDragging = false;
+      canvas.selection = true;
+    }
+  });
+
+  // Touch Controls (Pinch to Zoom & Pan)
+  let initialDistance = 0;
+  let initialZoom = 1;
+
+  canvas.upperCanvasEl.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 2) {
+      canvas.selection = false;
+      initialDistance = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialZoom = canvas.getZoom();
+      lastPosX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      lastPosY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    }
+  }, { passive: false });
+
+  canvas.upperCanvasEl.addEventListener('touchmove', function (e) {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const currentDistance = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+
+      if (initialDistance > 0) {
+        const touchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const touchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        let zoom = initialZoom * (currentDistance / initialDistance);
+        if (zoom > 5) zoom = 5;
+        if (zoom < 0.2) zoom = 0.2;
+
+        canvas.zoomToPoint({ x: touchCenterX, y: touchCenterY }, zoom);
+        const vpt = canvas.viewportTransform;
+        vpt[4] += touchCenterX - lastPosX;
+        vpt[5] += touchCenterY - lastPosY;
+        canvas.requestRenderAll();
+
+        lastPosX = touchCenterX;
+        lastPosY = touchCenterY;
+      }
+    }
+  }, { passive: false });
+
+  canvas.upperCanvasEl.addEventListener('touchend', function (e) {
+    if (e.touches.length < 2) {
+      initialDistance = 0;
+      canvas.selection = true;
+    }
+  });
+}
+
+function setupCanvasEvents() {
+  if (!canvas) return;
+
+  canvas.on('mouse:move', (opt) => {
+    const pointer = canvas.getPointer(opt.e);
+    const statX = document.getElementById('statX');
+    const statY = document.getElementById('statY');
+    if (statX) statX.innerText = Math.round(pointer.x * EngineState.scaleMm);
+    if (statY) statY.innerText = Math.round(pointer.y * EngineState.scaleMm);
+
+    if (isDrawingLine && currentLine) {
+      let targetX = pointer.x;
+      let targetY = pointer.y;
+
+      if (EngineState.snapToGrid) {
+        const snapPx = EngineState.gridStepMm / EngineState.scaleMm;
+        targetX = Math.round(targetX / snapPx) * snapPx;
+        targetY = Math.round(targetY / snapPx) * snapPx;
+      }
+
+      currentLine.set({ x2: targetX, y2: targetY });
+      const dx = (targetX - currentLine.x1) * EngineState.scaleMm;
+      const dy = (targetY - currentLine.y1) * EngineState.scaleMm;
+      currentLine.lineLengthMm = Math.round(Math.sqrt(dx * dx + dy * dy));
+      canvas.renderAll();
+    }
+  });
+
+  canvas.on('object:moving', (opt) => {
+    if (!EngineState.snapToGrid) return;
+    const snapPx = EngineState.gridStepMm / EngineState.scaleMm;
+    const target = opt.target;
+    target.set({
+      left: Math.round(target.left / snapPx) * snapPx,
+      top: Math.round(target.top / snapPx) * snapPx
+    });
+    target.setCoords();
+  });
+
+  canvas.on('selection:created', updateStatusDimensions);
+  canvas.on('selection:updated', updateStatusDimensions);
+  canvas.on('selection:cleared', () => {
+    const statW = document.getElementById('statW');
+    const statH = document.getElementById('statH');
+    if (statW) statW.innerText = '0';
+    if (statH) statH.innerText = '0';
+  });
+
+  canvas.on('object:modified', saveCanvasState);
+
+  canvas.on('mouse:down', (opt) => {
+    if (EngineState.mode === 'simulation' && opt.target) {
+      handleSimulationObjectClick(opt.target);
+    }
+    if (isDrawingLine && currentLine) {
+      isDrawingLine = false;
+      currentLine.setCoords();
+      saveCanvasState();
+      currentLine = null;
+    }
+  });
+}
+
+function updateStatusDimensions(e) {
+  const obj = e.selected[0];
+  if (obj) {
+    const wMm = Math.round((obj.width * obj.scaleX) * EngineState.scaleMm);
+    const hMm = Math.round((obj.height * obj.scaleY) * EngineState.scaleMm);
+    const statW = document.getElementById('statW');
+    const statH = document.getElementById('statH');
+    if (statW) statW.innerText = wMm;
+    if (statH) statH.innerText = hMm;
+  }
+}
+
+window.startDrawingLine = function(lineType) {
+  isDrawingLine = true;
+  currentLineType = lineType;
+
+  let strokeColor = '#00f2fe';
+  if (lineType === 'cold_pipe') strokeColor = '#0284c7';
+  if (lineType === 'hot_pipe') strokeColor = '#ff3344';
+  if (lineType === 'drain_pipe') strokeColor = '#22c55e';
+
+  const center = canvas.getVpCenter();
+  currentLine = new fabric.Line([center.x, center.y, center.x, center.y], {
+    stroke: strokeColor,
+    strokeWidth: 4,
+    selectable: true,
+    isLine: true,
+    mepType: 'plumbing',
+    lineType: lineType
+  });
+
+  canvas.add(currentLine);
+  canvas.bringToFront(currentLine);
+};
+
+// --- 7. BIM 3D Engine & Dynamic Wall Cutouts ---
+function init3DScene() {
+  const container = document.getElementById('canvas3DContainer');
+  if (!container) return;
+
+  const width = container.clientWidth || window.innerWidth;
+  const height = container.clientHeight || window.innerHeight;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x020617);
+
+  camera = new THREE.PerspectiveCamera(45, width / height, 1, 5000);
+  camera.position.set(0, 500, 700);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  const OrbitControlsCtor = THREE.OrbitControls || window.OrbitControls;
+  if (OrbitControlsCtor) {
+    controls = new OrbitControlsCtor(camera, renderer.domElement);
+    controls.enableDamping = true;
+  }
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(500, 1000, 500);
+  dirLight.castShadow = true;
+  scene.add(dirLight);
+
+  roomMeshGroup = new THREE.Group();
+  scene.add(roomMeshGroup);
+
+  renderer.domElement.addEventListener('click', handle3DClick);
+}
+
+function animate3D() {
+  if (is3DActive) {
+    animFrameId = requestAnimationFrame(animate3D);
+    if (controls) controls.update();
+    renderer.render(scene, camera);
+  }
+}
+
+function clear3DScene() {
+  if (!roomMeshGroup) return;
+
+  function disposeObject(obj) {
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material)) {
+        obj.material.forEach(mat => mat.dispose());
+      } else {
+        obj.material.dispose();
+      }
+    }
+    if (obj.children) obj.children.forEach(child => disposeObject(child));
+  }
+
+  while (roomMeshGroup.children.length > 0) {
+    const child = roomMeshGroup.children[0];
+    disposeObject(child);
+    roomMeshGroup.remove(child);
+  }
+  interactive3DObjects.length = 0;
+}
+
+window.toggle3DView = function() {
+  const container2D = document.getElementById('canvas2DContainer');
+  const container3D = document.getElementById('canvas3DContainer');
+
+  is3DActive = !is3DActive;
+
+  if (is3DActive) {
+    container2D.style.display = 'none';
+    container3D.style.display = 'block';
+
+    setTimeout(() => {
+      const width = container3D.clientWidth || window.innerWidth;
+      const height = container3D.clientHeight || window.innerHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+      build3DScene();
+      animate3D();
+    }, 50);
+  } else {
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+    container3D.style.display = 'none';
+    container2D.style.display = 'block';
+  }
+};
+
+function build3DScene() {
+  clear3DScene();
+
+  const gridHelper = new THREE.GridHelper(2000, 20, 0x00f2fe, 0x1e2937);
+  roomMeshGroup.add(gridHelper);
+
+  if (!canvas) return;
+
+  const objects = canvas.getObjects().filter(o => !o.isGridLine);
+  if (objects.length === 0) return;
+
+  const rooms = objects.filter(o => o.symbolType === 'architectural' || o.mepType === 'architectural');
+  const doorsAndWindows = objects.filter(o => (o.symbolType && o.symbolType.includes('carpentry')) || o.mepType === 'carpentry');
+  const otherSymbols = objects.filter(o => o.symbolType !== 'architectural' && o.mepType !== 'architectural' && !doorsAndWindows.includes(o));
+
+  rooms.forEach(obj => {
+    let w = (obj.roomWidth || obj.width) * (obj.scaleX || 1);
+    let h = (obj.roomHeight || obj.height) * (obj.scaleY || 1);
+    let centerX = obj.originX === 'center' ? obj.left : obj.left + w / 2;
+    let centerY = obj.originY === 'center' ? obj.top : obj.top + h / 2;
+
+    const wallH = obj.roomWallHeight || 280;
+    const thickness = 15;
+
+    const roomGroup3D = new THREE.Group();
+
+    const floorGeo = new THREE.BoxGeometry(w, 2, h);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.position.set(0, 1, 0);
+    roomGroup3D.add(floorMesh);
+
+    const roomLeft = obj.left - (obj.originX === 'center' ? w / 2 : 0);
+    const roomTop = obj.top - (obj.originY === 'center' ? h / 2 : 0);
+    const roomRight = roomLeft + w;
+    const roomBottom = roomTop + h;
+
+    const connectedDoors = doorsAndWindows.filter(d => {
+      const dB = d.getBoundingRect();
+      return (dB.left + dB.width >= roomLeft - 10 &&
+              dB.left <= roomRight + 10 &&
+              dB.top + dB.height >= roomTop - 10 &&
+              dB.top <= roomBottom + 10);
+    });
+
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, transparent: true, opacity: 0.85 });
+    const backWallDoor = connectedDoors.find(d => Math.abs(d.top - roomTop) < 30);
+
+    if (backWallDoor) {
+      const dWidth = (backWallDoor.doorWidth || backWallDoor.width) * (backWallDoor.scaleX || 1);
+      const isWin = (backWallDoor.nameTag || backWallDoor.mepName || '').includes('شباك');
+      
+      const winSillHeight = 100;
+      const itemHeight = isWin ? 120 : 210;
+      const lintelH = wallH - (isWin ? (winSillHeight + itemHeight) : itemHeight);
+      const segWidth = (w - dWidth) / 2;
+
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(segWidth, wallH, thickness), wallMat);
+      leftWall.position.set(-w / 2 + segWidth / 2, wallH / 2, -h / 2);
+
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(segWidth, wallH, thickness), wallMat);
+      rightWall.position.set(w / 2 - segWidth / 2, wallH / 2, -h / 2);
+
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(dWidth, lintelH, thickness), wallMat);
+      lintel.position.set(0, wallH - (lintelH / 2), -h / 2);
+      roomGroup3D.add(leftWall, rightWall, lintel);
+
+      if (isWin) {
+        const sillWall = new THREE.Mesh(new THREE.BoxGeometry(dWidth, winSillHeight, thickness), wallMat);
+        sillWall.position.set(0, winSillHeight / 2, -h / 2);
+        roomGroup3D.add(sillWall);
+      }
+    } else {
+      const wallBack = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, thickness), wallMat);
+      wallBack.position.set(0, wallH / 2, -h / 2);
+      roomGroup3D.add(wallBack);
+    }
+
+    const wallFront = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, thickness), wallMat);
+    wallFront.position.set(0, wallH / 2, h / 2);
+
+    const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(thickness, wallH, h), wallMat);
+    wallLeft.position.set(-w / 2, wallH / 2, 0);
+
+    const wallRight = new THREE.Mesh(new THREE.BoxGeometry(thickness, wallH, h), wallMat);
+    wallRight.position.set(w / 2, wallH / 2, 0);
+
+    roomGroup3D.add(wallFront, wallLeft, wallRight);
+
+    roomGroup3D.position.set(centerX - (canvas.width / 2), 0, centerY - (canvas.height / 2));
+    roomGroup3D.rotation.y = -(obj.angle || 0) * (Math.PI / 180);
+
+    roomMeshGroup.add(roomGroup3D);
+  });
+
+  doorsAndWindows.forEach(item => {
+    const itemWidth = (item.doorWidth || item.width) * (item.scaleX || 1);
+    const isWindow = (item.nameTag || item.mepName || '').includes('شباك');
+    const itemHeight = isWindow ? 120 : 210;
+    const winSillHeight = 100;
+
+    let centerX = item.originX === 'center' ? item.left : item.left + (item.width * item.scaleX) / 2;
+    let centerY = item.originY === 'center' ? item.top : item.top + (item.height * item.scaleY) / 2;
+
+    const posX = centerX - (canvas.width / 2);
+    const posZ = centerY - (canvas.height / 2);
+    const posY_3D = isWindow ? winSillHeight : 0;
+
+    const pivotGroup = new THREE.Group();
+    pivotGroup.position.set(posX - itemWidth / 2, posY_3D, posZ);
+
+    if (!isWindow) {
+      const doorLeafGeo = new THREE.BoxGeometry(itemWidth, itemHeight, 4);
+      const doorMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.6 });
+      const doorLeaf = new THREE.Mesh(doorLeafGeo, doorMat);
+      doorLeaf.position.set(itemWidth / 2, itemHeight / 2, 0);
+
+      const handleGeo = new THREE.SphereGeometry(3.5, 16, 16);
+      const handleMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8 });
+      const handle = new THREE.Mesh(handleGeo, handleMat);
+      handle.position.set(itemWidth - 10, itemHeight / 2, 5);
+
+      doorLeaf.add(handle);
+      pivotGroup.add(doorLeaf);
+
+      pivotGroup.userData = { isOpen: false, type: 'door', targetAngle: -Math.PI / 2 };
+      interactive3DObjects.push(doorLeaf);
+    } else {
+      const frameGeo = new THREE.BoxGeometry(itemWidth, itemHeight, 8);
+      const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x88ccee, transparent: true, opacity: 0.5, transmission: 0.9 });
+      const windowLeaf = new THREE.Mesh(frameGeo, glassMat);
+      windowLeaf.position.set(itemWidth / 2, itemHeight / 2, 0);
+
+      pivotGroup.add(windowLeaf);
+    }
+
+    pivotGroup.rotation.y = -(item.angle || 0) * (Math.PI / 180);
+    roomMeshGroup.add(pivotGroup);
+  });
+
+  otherSymbols.forEach(obj => {
+    let w = (obj.width * obj.scaleX) || 30;
+    let h = (obj.height * obj.scaleY) || 30;
+    let centerX = obj.originX === 'center' ? obj.left : obj.left + w / 2;
+    let centerY = obj.originY === 'center' ? obj.top : obj.top + h / 2;
+
+    const posX = centerX - (canvas.width / 2);
+    const posZ = centerY - (canvas.height / 2);
+    const name = obj.nameTag || obj.mepName || '';
+
+    if (obj.mepType === 'furniture' || name.includes('سرير') || name.includes('كنبة') || name.includes('طاولة')) {
+      let furnH = 50;
+      if (name.includes('سرير')) furnH = 60;
+      else if (name.includes('كنبة')) furnH = 80;
+      else if (name.includes('طاولة')) furnH = 75;
+
+      const geo = new THREE.BoxGeometry(w, furnH, h);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.5 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(posX, furnH / 2, posZ);
+      mesh.rotation.y = -(obj.angle || 0) * (Math.PI / 180);
+      roomMeshGroup.add(mesh);
+    } else if (obj.mepType === 'electrical' && (name.includes('لمبة') || name.includes('سبوت'))) {
+      const geo = new THREE.SphereGeometry(12, 16, 16);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(posX, 260, posZ);
+      roomMeshGroup.add(mesh);
+    } else if (name.includes('بريزة')) {
+      const geo = new THREE.BoxGeometry(12, 12, 8);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xf5b813 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(posX, 40, posZ);
+      roomMeshGroup.add(mesh);
+    } else if (name.includes('مفتاح')) {
+      const geo = new THREE.BoxGeometry(10, 14, 8);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xff3344 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(posX, 110, posZ);
+      roomMeshGroup.add(mesh);
+    } else if (obj.mepType === 'plumbing') {
+      const geo = new THREE.BoxGeometry(w, 20, h);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(posX, 10, posZ);
+      roomMeshGroup.add(mesh);
+    } else {
+      const geo = new THREE.BoxGeometry(w, 15, h);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x64748b });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(posX, 7.5, posZ);
+      roomMeshGroup.add(mesh);
+    }
+  });
+
+  camera.position.set(0, 500, 700);
+  camera.lookAt(0, 0, 0);
+  if (controls) {
+    controls.target.set(0, 0, 0);
     controls.update();
+  }
 }
 
-document.getElementById('btnToggleCamMode')?.addEventListener('click', () => {
-    isInteriorView = !isInteriorView;
-    updateCameraMode();
-});
+function handle3DClick(event) {
+  if (!is3DActive) return;
 
-function build3DSceneFromCanvas() {
-    if (!scene) return;
-    while (roomMeshGroup.children.length > 0) {
-        roomMeshGroup.remove(roomMeshGroup.children[0]);
-    }
+  const rect = renderer.domElement.getBoundingClientRect();
+  const mouse = new THREE.Vector2(
+    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1
+  );
 
-    const gridHelper = new THREE.GridHelper(2000, 40, 0x00f2fe, 0x1f2937);
-    roomMeshGroup.add(gridHelper);
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(interactive3DObjects);
 
-    canvas.getObjects().forEach(obj => {
-        if (!obj.visible) return;
+  if (intersects.length > 0) {
+    const clickedMesh = intersects[0].object;
+    const pivotGroup = clickedMesh.parent;
 
-        const zElevation = obj.elevationZ || 0;
+    if (pivotGroup && pivotGroup.userData.type === 'door') {
+      const isOpen = pivotGroup.userData.isOpen;
+      const targetRotation = isOpen ? 0 : pivotGroup.userData.targetAngle;
 
-        if (obj.isLine) {
-            const dx = obj.x2 - obj.x1;
-            const dy = obj.y2 - obj.y1;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            
-            const geom = new THREE.CylinderGeometry(3, 3, len);
-            let matColor = 0x2563eb;
-            if (obj.stroke === '#06b6d4') matColor = 0x06b6d4;
-            else if (obj.stroke === '#ef4444') matColor = 0xef4444;
-            else if (obj.stroke === '#facc15') matColor = 0xfacc15;
-
-            const mat = new THREE.MeshLambertMaterial({ color: matColor });
-            const cylinder = new THREE.Mesh(geom, mat);
-
-            const midX = (obj.x1 + obj.x2) / 2 - canvas.width / 2;
-            const midZ = (obj.y1 + obj.y2) / 2 - canvas.height / 2;
-            cylinder.position.set(midX, zElevation, midZ);
-            cylinder.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
-            roomMeshGroup.add(cylinder);
-
+      const animateDoor = () => {
+        if (Math.abs(pivotGroup.rotation.y - targetRotation) > 0.05) {
+          pivotGroup.rotation.y += (targetRotation - pivotGroup.rotation.y) * 0.15;
+          requestAnimationFrame(animateDoor);
         } else {
-            const w = (obj.realWidth || obj.width * obj.scaleX);
-            const h = (obj.realHeight || obj.height * obj.scaleY);
-            let thickness = 40;
-
-            let matColor = 0x3b82f6;
-            if (obj.layerType === 'plumbing') { matColor = 0x06b6d4; thickness = 15; }
-            else if (obj.layerType === 'electrical') { matColor = 0xeab308; thickness = 10; }
-
-            const geometry = new THREE.BoxGeometry(w, thickness, h);
-            const material = new THREE.MeshLambertMaterial({ color: matColor });
-            const mesh = new THREE.Mesh(geometry, material);
-
-            mesh.position.set(
-                (obj.left + (w / 2)) - canvas.width / 2,
-                zElevation + (thickness / 2),
-                (obj.top + (h / 2)) - canvas.height / 2
-            );
-
-            mesh.rotation.y = -(obj.angle || 0) * (Math.PI / 180);
-            roomMeshGroup.add(mesh);
+          pivotGroup.rotation.y = targetRotation;
+          pivotGroup.userData.isOpen = !isOpen;
         }
-    });
-}
-
-/* ==========================================================================
-   9. Inventory Calculation & Bill of Materials (BOM)
-   ========================================================================== */
-function updateInventorySummary() {
-    const listContainer = document.getElementById('inventoryListContainer');
-    const totalCountLabel = document.getElementById('totalItemsCount');
-    if (!listContainer) return;
-
-    const summary = {};
-    let totalCount = 0;
-
-    canvas.getObjects().forEach(obj => {
-        const name = obj.nameTag || 'عنصر عام';
-        if (!summary[name]) summary[name] = 0;
-        summary[name]++;
-        totalCount++;
-    });
-
-    if (totalCountLabel) totalCountLabel.innerText = `${totalCount} عنصر`;
-
-    if (totalCount === 0) {
-        listContainer.innerHTML = `<div style="font-size:11px; color:#94a3b8; text-align:center; padding: 8px;">لم يتم إضافة عناصر بعد...</div>`;
-        return;
+      };
+      animateDoor();
     }
-
-    let html = '';
-    Object.keys(summary).forEach(name => {
-        html += `<div style="display:flex; justify-content:space-between; font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:4px;">
-            <span>${name}</span>
-            <span style="color:#00f2fe; font-weight:bold;">${summary[name]}</span>
-        </div>`;
-    });
-
-    listContainer.innerHTML = html;
+  }
 }
 
-function renderFullBOMTable() {
-    const modal = document.getElementById('inventoryModal');
-    const container = document.getElementById('inventoryTableContainer');
-    if (!modal || !container) return;
+// --- 8. BOM Quantity Table & General Exports ---
+window.toggleBOMModal = function() {
+  const modal = document.getElementById('bom-modal');
+  if (!modal) return;
+  modal.classList.toggle('hidden');
 
-    modal.classList.remove('hidden');
+  if (!modal.classList.contains('hidden')) {
+    generateBOMTable();
+  }
+};
 
-    const summary = {};
+function generateBOMTable() {
+  const tbody = document.getElementById('bom-table-body');
+  if (!tbody || !canvas) return;
+  tbody.innerHTML = '';
 
-    canvas.getObjects().forEach(obj => {
-        const name = obj.nameTag || 'عنصر عام';
-        const layer = obj.layerType || 'معماري';
-        const key = `${name}_${layer}`;
+  const objects = canvas.getObjects().filter(o => !o.isGridLine);
+  const counts = {};
 
-        if (!summary[key]) {
-            summary[key] = { count: 0, name: name, layer: layer, lineMeters: 0 };
-        }
+  objects.forEach(obj => {
+    const key = obj.nameTag || obj.mepName || 'عنصر هندسي';
+    if (!counts[key]) {
+      counts[key] = {
+        name: key,
+        category: obj.mepType || 'عام',
+        count: 0,
+        status: obj.isOn ? 'نشط' : (obj.isOpen ? 'مفتوح' : 'جاهز')
+      };
+    }
+    counts[key].count++;
+  });
 
-        if (obj.isLine) {
-            summary[key].lineMeters += parseFloat(obj.lineLength) || 0;
-        } else {
-            summary[key].count++;
-        }
+  Object.values(counts).forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.name}</td>
+      <td>${item.category}</td>
+      <td>${item.count}</td>
+      <td>مواصفات قياسية MEP</td>
+      <td><span class="status-tag on">${item.status}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+window.exportPNG = function() {
+  if (!canvas) return;
+  const dataURL = canvas.toDataURL({ format: 'png', quality: 1.0 });
+  const link = document.createElement('a');
+  link.download = 'SNElectric_MEP_Plan.png';
+  link.href = dataURL;
+  link.click();
+};
+
+window.exportTXTReport = function() {
+  if (!canvas) return;
+  let report = `=====================================\n`;
+  report += `   S⚡N ELECTRIC MEP REPORT v3.5     \n`;
+  report += `=====================================\n\n`;
+  report += `تاريخ التقرير: ${new Date().toLocaleString('ar-EG')}\n`;
+  report += `الحمل الكهربائي: ${EngineState.simulationMetrics.totalCurrentA} A (${EngineState.simulationMetrics.totalPowerKW} kW)\n`;
+  report += `ضغط السباكة: ${EngineState.simulationMetrics.waterPressureBar} Bar\n\n`;
+  report += `--- قائمة الحصر والمكونات ---\n`;
+
+  const counts = {};
+  canvas.getObjects().forEach(obj => {
+    if (obj.isGridLine) return;
+    const name = obj.nameTag || obj.mepName || 'عنصر هندسي';
+    counts[name] = (counts[name] || 0) + 1;
+  });
+
+  Object.keys(counts).forEach(key => {
+    report += `- ${key}: ${counts[key]} قطعة\n`;
+  });
+
+  const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+  const link = document.createElement('a');
+  link.download = 'MEP_Inventory_Report.txt';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+};
+
+// --- 9. Utility Functions & UI Callbacks ---
+window.toggleSidebar = function() {
+  const sidebar = document.getElementById('sidebarMenu');
+  if (sidebar) sidebar.classList.toggle('open');
+};
+
+window.togglePopup = function(popupId, event) {
+  if (event) event.stopPropagation();
+  const targetPopup = document.getElementById(popupId);
+  if (!targetPopup) return;
+  const isOpen = targetPopup.classList.contains('active');
+  
+  closeAllPopups();
+  if (!isOpen) {
+    targetPopup.classList.add('active');
+  }
+};
+
+window.closeAllPopups = function() {
+  document.querySelectorAll('.popup-window').forEach(p => p.classList.remove('active'));
+};
+
+window.toggleSnap = function() {
+  EngineState.snapToGrid = !EngineState.snapToGrid;
+  const btn = document.getElementById('snapToggleBtn');
+  const stat = document.getElementById('statSnap');
+
+  if (btn) {
+    btn.innerText = EngineState.snapToGrid ? '🧲 الانجذاب: مفعل' : '🧲 الانجذاب: معطل';
+    if (EngineState.snapToGrid) btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
+  if (stat) stat.innerText = EngineState.snapToGrid ? 'نشط' : 'غير نشط';
+  drawGrid();
+};
+
+window.updateScaleSettings = function() {
+  const scaleInput = document.getElementById('scaleInput');
+  const gridInput = document.getElementById('gridInput');
+  EngineState.scaleMm = parseFloat(scaleInput ? scaleInput.value : 10) || 10;
+  EngineState.gridStepMm = parseFloat(gridInput ? gridInput.value : 100) || 100;
+  drawGrid();
+};
+
+window.updateSelectedObjectColor = function(type, colorValue) {
+  if (!canvas) return;
+  EngineState.selectedColor[type] = colorValue;
+  const activeObjects = canvas.getActiveObjects();
+  if (activeObjects.length === 0) return;
+
+  activeObjects.forEach(obj => {
+    if (obj.type === 'group') {
+      obj.forEachObject(child => {
+        if (type === 'stroke' && child.stroke) child.set('stroke', colorValue);
+        if (type === 'fill' && child.fill && child.type !== 'text' && !child.is2DMask) child.set('fill', colorValue);
+      });
+    } else {
+      if (type === 'stroke') obj.set('stroke', colorValue);
+      if (type === 'fill' && !obj.is2DMask) obj.set('fill', colorValue);
+    }
+  });
+
+  canvas.requestRenderAll();
+  saveCanvasState();
+};
+
+window.addFreeText = function() {
+  const input = document.getElementById('freeTextInput');
+  if (!input || !input.value.trim()) return;
+
+  const center = canvas.getVpCenter();
+  const text = new fabric.Text(input.value.trim(), {
+    left: center.x, top: center.y, fontSize: 18, fill: EngineState.selectedColor.stroke, fontFamily: 'Segoe UI', originX: 'center', originY: 'center'
+  });
+
+  text.nameTag = input.value.trim();
+  canvas.add(text);
+  canvas.bringToFront(text);
+  text.setCoords();
+  canvas.setActiveObject(text);
+
+  input.value = '';
+  saveCanvasState();
+  canvas.requestRenderAll();
+};
+
+function saveCanvasState() {
+  if (!canvas) return;
+  if (EngineState.historyStack.length > 20) EngineState.historyStack.shift();
+  EngineState.historyStack.push(JSON.stringify(canvas.toJSON([
+    'mepType', 'mepName', 'nameTag', 'symbolType', 'roomWallHeight', 
+    'roomWidth', 'roomHeight', 'isLine', 'lineLengthMm', 'doorWidth', 
+    'isOn', 'isOpen', 'flowActive', 'loadCurrent', 'isPanel'
+  ])));
+}
+
+window.undoLastAction = function() {
+  if (EngineState.historyStack.length > 1) {
+    EngineState.historyStack.pop();
+    const prevState = EngineState.historyStack[EngineState.historyStack.length - 1];
+    canvas.loadFromJSON(prevState, () => {
+      canvas.renderAll();
+      drawGrid();
+      updateSimulationEngine();
     });
+  }
+};
 
-    let html = `<table style="width:100%; border-collapse:collapse; color:#fff; text-align:right; font-size:12px;">
-        <thead>
-            <tr style="background:#1e1e2e; color:#00f2fe;">
-                <th style="padding:8px; border:1px solid #333;">اسم القطعة / العنصر</th>
-                <th style="padding:8px; border:1px solid #333;">الطبقة</th>
-                <th style="padding:8px; border:1px solid #333;">العدد</th>
-                <th style="padding:8px; border:1px solid #333;">الإجمالي (أمتار)</th>
-            </tr>
-        </thead>
-        <tbody>`;
+function handleResize() {
+  const container = document.getElementById('canvas2DContainer');
+  if (!container || !canvas) return;
 
-    Object.keys(summary).forEach(k => {
-        const item = summary[k];
-        html += `<tr>
-            <td style="padding:8px; border:1px solid #333;">${item.name}</td>
-            <td style="padding:8px; border:1px solid #333;">${item.layer}</td>
-            <td style="padding:8px; border:1px solid #333;">${item.count > 0 ? item.count + ' قطعة' : '-'}</td>
-            <td style="padding:8px; border:1px solid #333;">${item.lineMeters > 0 ? item.lineMeters.toFixed(2) + ' متر' : '-'}</td>
-        </tr>`;
-    });
+  canvas.setWidth(container.clientWidth);
+  canvas.setHeight(container.clientHeight);
+  drawGrid();
 
-    html += `</tbody></table>`;
-    container.innerHTML = html;
+  if (renderer && camera) {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  }
+}
+
+function setupEventListeners() {
+  window.addEventListener('click', closeAllPopups);
 }
