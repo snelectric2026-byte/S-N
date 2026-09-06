@@ -1209,3 +1209,18 @@ function handleResize() {
 function setupEventListeners() {
   window.addEventListener('click', closeAllPopups);
 }
+
+// دالة لحساب هبوط الجهد باستدعاء محرك C++ عبر WebAssembly
+function calculateVoltageDropWithCPP(current, length, resistance, voltage) {
+    // التحقق من اكتمال تحميل محرك C++ Wasm
+    if (typeof Module !== 'undefined' && Module._calculate_voltage_drop) {
+        // استدعاء الدالة المكتوبة بـ C++ مباشرة
+        const dropPercent = Module._calculate_voltage_drop(current, length, resistance, voltage);
+        console.log(`⚡ النتيجة من محرك C++: ${dropPercent.toFixed(2)}%`);
+        return dropPercent;
+    } else {
+        console.warn("⚠️ محرك C++ غير جاهز بعد، سيتم استخدام الحساب الافتراضي.");
+        // حساب افتراضي احتياطي
+        return ((2 * current * length * (resistance / 1000)) / voltage) * 100;
+    }
+                        }
