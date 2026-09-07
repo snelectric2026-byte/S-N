@@ -677,3 +677,53 @@ body, html {
 .bom-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.03);
 }
+/* ==========================================================================
+   تنسيقات تجاوب الشاشات الصغيرة (Responsive Mobile Styles)
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+  /* ضبط الشريط العلوي ليظهر بشكل منظّم */
+  .top-bar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .top-bar-left, .top-bar-actions, .color-toolbar {
+    width: 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+
+  /* تصغير أزرار التحكم والخطوط */
+  .glass-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .brand {
+    font-size: 16px;
+  }
+
+  /* تحسين شريط الحالة السفلي */
+  .status-console {
+    bottom: 5px;
+    left: 5px;
+    right: 5px;
+    height: auto;
+    flex-direction: column;
+    padding: 6px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .bottom-status-bar {
+    display: none; /* إخفاء الشريط السفي غير الضروري لزيادة مساحة العمل */
+  }
+
+  /* جعل القوائم الجانبية تمتد بالكامل */
+  .sidebar {
+    width: 100vw;
+  }
+}
