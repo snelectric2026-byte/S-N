@@ -1457,3 +1457,142 @@ window.calculateVoltageDropBridge = function(current, length, resistance, voltag
   if (voltage <= 0) return 0;
   return ((2 * current * length * (resistance / 1000)) / voltage) * 100;
 };
+let currentSelectedObject = null;
+let actionBarElem = null;
+
+// إنشاء عنصر الشريط العائم في الصفحة
+function createFloatingActionBar() {
+    if (actionBarElem) return;
+    actionBarElem = document.createElement('div');
+    actionBarElem.className = 'object-action-bar hidden';
+    actionBarElem.innerHTML = `
+        <button class="obj-btn obj-btn-delete" title="حذف العنصر" onclick="deleteSelectedObject()">✕</button>
+        <button class="obj-btn obj-btn-clone" title="نسخ العنصر" onclick="cloneSelectedObject()">C</button>
+        <button class="obj-btn obj-btn-resize" title="تغيير الأبعاد" onclick="openObjectDimModal()">T</button>
+    `;
+    document.querySelector('.canvas-container-wrapper').appendChild(actionBarElem);
+}
+
+// تحديث موقع أزرار التحكم فوق العنصر المحدد
+function updateActionBarPosition() {
+    if (!currentSelectedObject || !canvas) {
+        if (actionBarElem) actionBarElem.classList.add('hidden');
+        return;
+    }
+
+    const bound = currentSelectedObject.getBoundingRect();
+    // إحداثيات مركز العنصر من الأعلى
+    const posX = bound.left + bound.width / 2;
+    const posY = bound.top - 10; 
+
+    actionBarElem.style.left = `${posX}px`;
+    actionBarElem.style.top = `${posY}px`;
+    actionBarElem.classList.remove('hidden');
+}
+
+// الاستماع لأحداث التحديد والحركة في Fabric.js
+canvas.on('selection:created', (e) => {
+    currentSelectedObject = e.selected[0];
+    createFloatingActionBar();
+    updateActionBarPosition();
+});
+
+canvas.on('selection:updated', (e) => {
+    currentSelectedObject = e.selected[0];
+    updateActionBarPosition();
+});
+
+canvas.on('selection:cleared', () => {
+    currentSelectedObject = null;
+    if (actionBarElem) actionBarElem.classList.add('hidden');
+});
+
+canvas.on('object:moving', updateActionBarPosition);
+canvas.on('object:scaling', updateActionBarPosition);
+canvas.on('object:rotating', updateActionBarPosition);
+
+// 1️⃣ وظيفة الحذف (×)
+window.deleteSelectedObject = function() {
+    if (!currentSelectedObject) return;
+    canvas.remove(currentSelectedObject);
+    canvas.discardActiveObject();
+    canvas.renderAll();
+    if (actionBarElem) actionBarElem.classList.add('hidden');
+};
+
+// 2️⃣ وظيفة النسخ (C) مع إزاحة بسيطة
+window.cloneSelectedObject = function() {
+    if (!currentSelectedObject) return;
+    
+    currentSelectedObject.clone((cloned) => {
+        canvas.discardActiveObject();
+        cloned.set({
+            left: cloned.left + 20, // إزاحة بسيطة للأفق
+            top: cloned.top + 20,   // إزاحة بسيطة للرأس
+            evented: true
+        });
+        
+        if (cloned.type === 'activeSelection') {
+            cloned.canvas = canvas;
+            cloned.forEachObject((obj) => canvas.add(obj));
+            cloned.setCoordinates();
+        } else {
+            canvas.add(cloned);
+        }
+        
+        canvas.setActiveObject(cloned);
+        canvas.requestRenderAll();
+    });
+};
+
+// 3️⃣ فتح نافذة تغيير الأبعاد (T)
+window.openObjectDimModal = function() {
+    if (!currentSelectedObject) return;
+    
+    const modal = document.getElementById('objectDimensionModal');
+    const nameLabel = document.getElementById('targetObjectName');
+    const inputW = document.getElementById('objWidthInput');
+    const inputH = document.getElementById('objHeightInput');
+    const inputZ = document.getElementById('objDepthInput');
+
+    // قراءة الأبعاد الحالية بحساب الـ Scale
+    const currentW = Math.round(currentSelectedObject.width * currentSelectedObject.scaleX);
+    const currentH = Math.round(currentSelectedObject.height * currentSelectedObject.scaleY);
+    const currentZ = currentSelectedObject.height3D || 2800; // افتراضي للارتفاع 3D
+
+    nameLabel.innerText = currentSelectedObject.label || currentSelectedObject.type || 'عنصر';
+    inputW.value = currentW;
+    inputH.value = currentH;
+    inputZ.value = currentZ;
+
+    modal.classList.remove('hidden');
+};
+
+// إغلاق نافذة الأبعاد
+window.closeObjectDimModal = function() {
+    document.getElementById('objectDimensionModal').classList.add('hidden');
+};
+
+// تطبيق الأبعاد الجديدة على العنصر
+window.applyObjectDimensions = function() {
+    if (!currentSelectedObject) return;
+
+    const newW = parseFloat(document.getElementById('objWidthInput').value);
+    const newH = parseFloat(document.getElementById('objHeightInput').value);
+    const newZ = parseFloat(document.getElementById('objDepthInput').value);
+
+    if (newW > 0 && newH > 0) {
+        // تغيير المقاس بحساب الـ Scale المناسب
+        currentSelectedObject.set({
+            scaleX: newW / currentSelectedObject.width,
+            scaleY: newH / currentSelectedObject.height,
+            height3D: newZ // حفظ الارتفاع الخاص بـ 3D
+        });
+
+        currentSelectedObject.setCoordinates();
+        canvas.requestRenderAll();
+        updateActionBarPosition();
+    }
+
+    closeObjectDimModal();
+};
