@@ -1,14 +1,19 @@
 /* ==========================================================================
-   1. المتغيرات العامة والإعدادات الأساسية (Variables & Base Reset)
+   1. المتغيرات العامة والأوضاع (Variables & Theme System)
    ========================================================================== */
 :root {
-  --primary-color: #00e5ff;
-  --primary-dark: #008ba3;
+  /* الوضع 3: الافتراضي الحالي (Dark Electric) */
   --bg-gradient: linear-gradient(135deg, #0b0f19 0%, #151d2a 50%, #0b0f19 100%);
+  --bg-main: #090d16;
+  --topbar-bg: #111827;
+  --topbar-text: #ffffff;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #ffffff;
   --glass-bg: rgba(21, 29, 42, 0.95);
-  --glass-bg-hover: rgba(30, 41, 59, 1);
   --glass-border: rgba(255, 255, 255, 0.2);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  --primary-color: #00e5ff;
+  --primary-dark: #008ba3;
   --text-main: #ffffff;
   --text-muted: #cbd5e1;
   --danger-color: #ff4d4d;
@@ -18,6 +23,53 @@
   --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --sidebar-width: 320px;
   --transition-speed: 0.2s;
+  
+  /* ألوان الأزرار والشبكة الافتراضية */
+  --btn-bg: #1e293b;
+  --btn-text: #ffffff;
+  --btn-hover: #334155;
+  --bottombar-bg: #090d16;
+  --grid-line-color: rgba(255, 255, 255, 0.15);
+}
+
+/* الوضع 1: البار العلوي أبيض والنزأزرار ملونة والقائمة الجانبية بيضاء */
+body.theme-light {
+  --bg-gradient: none;
+  --bg-main: #f1f5f9;
+  --topbar-bg: #ffffff;
+  --topbar-text: #0f172a;
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #0f172a;
+  --glass-bg: #ffffff;
+  --glass-border: rgba(0, 0, 0, 0.15);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --btn-bg: #2563eb;
+  --btn-text: #ffffff;
+  --btn-hover: #1d4ed8;
+  --primary-color: #2563eb;
+  --bottombar-bg: #ffffff;
+  --grid-line-color: rgba(0, 0, 0, 0.15);
+}
+
+/* الوضع 2: البار العلوي أسود والأزرار بيضاء وكذلك القائمة الجانبية */
+body.theme-monochrome-dark {
+  --bg-gradient: none;
+  --bg-main: #000000;
+  --topbar-bg: #0a0a0a;
+  --topbar-text: #ffffff;
+  --sidebar-bg: #0a0a0a;
+  --sidebar-text: #ffffff;
+  --glass-bg: #0a0a0a;
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --text-main: #ffffff;
+  --text-muted: #a1a1aa;
+  --btn-bg: #ffffff;
+  --btn-text: #000000;
+  --btn-hover: #e5e5e5;
+  --primary-color: #ffffff;
+  --bottombar-bg: #0a0a0a;
+  --grid-line-color: rgba(255, 255, 255, 0.2);
 }
 
 * {
@@ -32,7 +84,7 @@ body, html {
   height: 100%;
   overflow: hidden;
   font-family: var(--font-family);
-  background: var(--bg-gradient);
+  background: var(--bg-main);
   color: var(--text-main);
   direction: rtl;
 }
@@ -112,12 +164,12 @@ body, html {
   letter-spacing: 2px;
 }
 
-.tagline-sn { color: #fff; font-weight: bold; }
+.tagline-sn { color: var(--text-main); font-weight: bold; }
 .tagline-bolt { color: var(--primary-color); }
-.tagline-n { color: #fff; font-weight: bold; }
+.tagline-n { color: var(--text-main); font-weight: bold; }
 
 /* ==========================================================================
-   3. تخطيط التطبيق الرئيسي (App Layout & Top Bar)
+   3. تخطيط التطبيق الرئيسي والبار العلوي (App Layout & Top Bar)
    ========================================================================== */
 .app-container {
   display: flex;
@@ -127,14 +179,15 @@ body, html {
 }
 
 .top-bar {
-  height: 60px;
+  height: 55px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 15px;
   z-index: 100;
-  background: #111827;
+  background: var(--topbar-bg);
   border-bottom: 1px solid var(--glass-border);
+  color: var(--topbar-text);
 }
 
 .glass-panel {
@@ -158,58 +211,7 @@ body, html {
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
 }
 
-/* محول الأوضاع */
-.mode-selector {
-  display: flex;
-  gap: 8px;
-  background: #0f172a;
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--glass-border);
-}
-
-.mode-btn {
-  padding: 6px 14px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.mode-btn.active {
-  background: var(--primary-color) !important;
-  color: #000000 !important;
-  font-weight: bold;
-  box-shadow: 0 0 10px var(--primary-color);
-}
-
-/* شريط الألوان */
-.color-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  background: #0f172a;
-  padding: 4px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--glass-border);
-}
-
-.color-picker-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-main);
-  font-weight: 600;
-}
-
-.color-picker-group input[type="color"] {
-  border: 1px solid #ffffff;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  background: transparent;
-}
-
+/* الترتيب الجديد لمحتوى الأزرار بالبار العلوي: 3D, 2D, صورة, تقرير, تراجع, لاحق */
 .top-bar-actions {
   display: flex;
   align-items: center;
@@ -217,17 +219,75 @@ body, html {
 }
 
 /* ==========================================================================
-   4. الأزرار العامة والتفاعلية (Buttons)
+   4. ترويسة الإعدادات والمقاييس والشبكة (Settings & Grid Header)
+   ========================================================================== */
+.settings-header-card {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-header-card h4 {
+  font-size: 13px;
+  color: var(--primary-color);
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 4px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--sidebar-text);
+}
+
+.setting-row select, 
+.setting-row input[type="color"], 
+.setting-row input[type="number"] {
+  background: var(--bg-main);
+  border: 1px solid var(--glass-border);
+  color: var(--sidebar-text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  outline: none;
+  font-size: 11px;
+}
+
+.color-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sidebar-text);
+  font-weight: 600;
+}
+
+.color-picker-group input[type="color"] {
+  border: 1px solid var(--glass-border);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+}
+
+/* ==========================================================================
+   5. الأزرار العامة والتفاعلية (Buttons)
    ========================================================================== */
 .glass-btn {
-  background: #1e293b;
+  background: var(--btn-bg);
   border: 1px solid var(--glass-border);
-  color: var(--text-main);
-  padding: 8px 14px;
-  border-radius: 8px;
+  color: var(--btn-text);
+  padding: 7px 14px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -235,9 +295,8 @@ body, html {
 }
 
 .glass-btn:hover {
-  background: #334155;
+  background: var(--btn-hover);
   border-color: var(--primary-color);
-  color: #ffffff;
 }
 
 .btn-primary { background: var(--accent-color); color: #ffffff; }
@@ -247,7 +306,7 @@ body, html {
 .btn-primary-sm { padding: 4px 10px; font-size: 12px; background: var(--accent-color); color: #ffffff; }
 
 /* ==========================================================================
-   5. الشريط الجانبي والكتالوج (Sidebar & Catalog Menu)
+   6. الشريط الجانبي والكتالوج (Sidebar & Catalog Menu)
    ========================================================================== */
 .main-body {
   display: flex;
@@ -267,9 +326,10 @@ body, html {
   display: flex;
   flex-direction: column;
   z-index: 9999 !important;
-  background: #0f172a;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
   border-left: 1px solid var(--glass-border);
-  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.9);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
   transition: transform var(--transition-speed) ease;
   overflow-y: auto;
   overflow-x: hidden;
@@ -306,7 +366,7 @@ body, html {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #1e293b;
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   padding: 12px;
   border-radius: 10px;
@@ -317,13 +377,13 @@ body, html {
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
-  color: var(--text-main);
+  color: var(--sidebar-text);
 }
 
 .glass-input-group input, .glass-input-block input[type="text"] {
-  background: #0f172a;
+  background: var(--bg-main);
   border: 1px solid var(--glass-border);
-  color: #ffffff;
+  color: var(--sidebar-text);
   padding: 8px 10px;
   border-radius: 6px;
   outline: none;
@@ -346,7 +406,7 @@ body, html {
   gap: 8px;
   margin-top: 4px;
   cursor: pointer;
-  color: var(--text-main);
+  color: var(--sidebar-text);
 }
 
 /* القوائم المنسدلة للكتالوج والرموز الهندسية */
@@ -363,9 +423,9 @@ body, html {
 .category-title-btn {
   width: 100%;
   text-align: right;
-  background: #1e293b;
+  background: var(--btn-bg);
   border: 1px solid var(--glass-border);
-  color: #ffffff;
+  color: var(--btn-text);
   padding: 12px;
   border-radius: 8px;
   cursor: pointer;
@@ -378,12 +438,11 @@ body, html {
 }
 
 .category-title-btn:hover {
-  background: #334155;
+  background: var(--btn-hover);
   border-color: var(--primary-color);
   color: var(--primary-color);
 }
 
-/* أنماط أزرار الرموز الهندسية داخل القوائم */
 .popup-window {
   display: none;
   flex-direction: column;
@@ -391,9 +450,9 @@ body, html {
   margin-top: 6px;
   padding: 10px;
   border-radius: 8px;
-  background: #020617;
+  background: var(--bg-main);
   border: 1px solid var(--primary-color);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   max-height: 280px;
   overflow-y: auto;
 }
@@ -408,9 +467,9 @@ body, html {
   gap: 10px;
   width: 100%;
   text-align: right;
-  background: #0f172a;
+  background: var(--btn-bg);
   border: 1px solid var(--glass-border);
-  color: #ffffff;
+  color: var(--btn-text);
   padding: 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -443,14 +502,13 @@ body, html {
 }
 
 /* ==========================================================================
-   6. مساحة الرسم والمحاكاة (Workspace & Canvas)
+   7. مساحة الرسم والمحاكاة (Workspace & Canvas)
    ========================================================================== */
 .workspace {
   flex: 1;
   position: relative;
-  background: #090d16;
-  background-image: 
-    radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 0);
+  background: var(--bg-main);
+  background-image: radial-gradient(var(--grid-line-color) 1px, transparent 0);
   background-size: 24px 24px;
   overflow: hidden;
 }
@@ -458,8 +516,8 @@ body, html {
 .canvas-container-wrapper {
   position: relative;
   width: 100%;
-  height: calc(100vh - 90px);
-  background: #050811;
+  height: calc(100vh - 93px);
+  background: transparent;
   overflow: hidden;
 }
 
@@ -492,7 +550,7 @@ body, html {
   display: flex;
   gap: 8px;
   padding: 6px 10px;
-  background: #0f172a;
+  background: var(--sidebar-bg);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
 }
@@ -508,12 +566,12 @@ body, html {
   align-items: center;
   justify-content: space-around;
   padding: 0 20px;
-  background: #0f172a;
+  background: var(--sidebar-bg);
   border: 1px solid var(--primary-color);
   border-radius: 12px;
   z-index: 80;
   font-size: 13px;
-  color: #ffffff;
+  color: var(--sidebar-text);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
@@ -528,24 +586,70 @@ body, html {
 #total-pressure-text { color: #38bdf8; font-weight: bold; }
 
 /* ==========================================================================
-   7. شريط الحالة السفلي (Bottom Status Bar)
+   8. البار السفلي بجدول المربعات الـ 7 والانجذاب Snap
    ========================================================================== */
 .bottom-status-bar {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 20px;
-  padding: 0 20px;
-  font-size: 12px;
-  color: var(--text-muted);
-  background: #090d16;
+  height: 38px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bottombar-bg);
   border-top: 1px solid var(--glass-border);
   z-index: 100;
+  align-items: center;
+}
+
+.status-grid-cell {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  font-size: 10.5px;
+  color: var(--sidebar-text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* زر تفاعل الانجذاب Snap */
+.snap-toggle-btn {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--sidebar-text);
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.snap-toggle-btn.active {
+  background: var(--primary-color);
+  color: #000000;
+  border-radius: 3px;
+}
+
+.cell-label {
+  color: var(--primary-color);
+  margin-left: 3px;
+  font-weight: bold;
+}
+
+.cell-value {
+  font-weight: 600;
 }
 
 /* ==========================================================================
-   8. النوافذ المنبثقة التفاعلية (Modals System & Dynamic Controls)
+   9. النوافذ المنبثقة التفاعلية (Modals System & Dynamic Controls)
    ========================================================================== */
 .modal-overlay {
   position: fixed;
@@ -571,7 +675,7 @@ body, html {
 .modal-box {
   width: 440px;
   max-width: 90vw;
-  background: #0f172a;
+  background: var(--sidebar-bg);
   border: 2px solid var(--primary-color);
   border-radius: 16px;
   padding: 24px;
@@ -579,6 +683,7 @@ body, html {
   flex-direction: column;
   gap: 16px;
   box-shadow: 0 0 30px rgba(0, 229, 255, 0.3);
+  color: var(--sidebar-text);
 }
 
 .wide-modal-box {
@@ -626,10 +731,10 @@ body, html {
 }
 
 /* ==========================================================================
-   9. بطاقات التحكم وقواطع الكهرباء (Breaker & Electrical Controls)
+   10. بطاقات التحكم وقواطع الكهرباء (Breaker & Electrical Controls)
    ========================================================================== */
 .breaker-card {
-  background: #1e293b;
+  background: var(--btn-bg);
   padding: 15px;
   border-radius: 10px;
   border: 1px solid var(--glass-border);
@@ -665,7 +770,7 @@ body, html {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #1e293b;
+  background: var(--btn-bg);
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 13px;
@@ -736,7 +841,7 @@ body, html {
 }
 
 /* ==========================================================================
-   10. جدول حصر الكميات (BOM Table)
+   11. جدول حصر الكميات (BOM Table)
    ========================================================================== */
 .bom-table {
   width: 100%;
@@ -746,7 +851,7 @@ body, html {
 }
 
 .bom-table th {
-  background: #1e293b;
+  background: var(--btn-bg);
   color: var(--primary-color);
   padding: 12px;
   border-bottom: 2px solid var(--glass-border);
@@ -757,17 +862,17 @@ body, html {
 .bom-table td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--glass-border);
-  color: var(--text-main);
+  color: var(--sidebar-text);
 }
 
 .bom-table tbody tr:hover {
-  background: #1e293b;
+  background: var(--btn-bg);
 }
 
 /* ==========================================================================
-   11. تجاوب الشاشات الصغيرة (Responsive Mobile Styles)
+   12. تجاوب الشاشات الصغيرة (Responsive Mobile Styles)
    ========================================================================== */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 850px) {
   .top-bar {
     height: auto;
     flex-wrap: wrap;
@@ -775,7 +880,7 @@ body, html {
     padding: 8px 10px;
   }
 
-  .top-bar-left, .top-bar-actions, .color-toolbar {
+  .top-bar-left, .top-bar-actions {
     width: 100%;
     justify-content: space-between;
     overflow-x: auto;
@@ -783,7 +888,7 @@ body, html {
 
   .glass-btn {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 11px;
     white-space: nowrap;
   }
 
@@ -803,6 +908,11 @@ body, html {
   }
 
   .bottom-status-bar {
+    grid-template-columns: repeat(4, 1fr);
+    height: auto;
+  }
+
+  .status-grid-cell:nth-child(n+5) {
     display: none;
   }
 }
