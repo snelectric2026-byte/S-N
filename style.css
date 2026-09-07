@@ -729,3 +729,9 @@ body, html {
     display: none;
   }
 }
+#canvas2DContainer, #mepCanvas, .upper-canvas {
+    touch-action: none !important;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
