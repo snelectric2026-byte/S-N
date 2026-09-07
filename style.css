@@ -727,3 +727,36 @@ body, html {
     width: 100vw;
   }
 }
+/* إصلاح تموضع القائمة الجانبية على الموبايل */
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 9999 !important; /* لضمان ظهورها فوق كل الأزرار والشاشات */
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.8);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* حالة الإغلاق: إخفاء القائمة لليمين */
+.sidebar.collapsed {
+  transform: translateX(100%);
+}
+
+/* overlay خلفية عند فتح القائمة */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  display: none;
+}
+
+.sidebar-overlay.active {
+  display: block;
+}
