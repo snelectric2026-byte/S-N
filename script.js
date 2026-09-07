@@ -666,6 +666,53 @@ window.startDrawingLine = function(lineType) {
 };
 
 // --- 7. BIM 3D Engine & Dynamic Wall Cutouts ---
+
+// دالة مساعدة لبناء جدار مفرغ من الأبواب والنوافذ
+function createWallWithOpenings(wallWidth, wallHeight, wallThickness, connectedItems) {
+  const wallGroup = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, transparent: true, opacity: 0.85 });
+
+  if (!connectedItems || connectedItems.length === 0) {
+    const solidWall = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, wallHeight, wallThickness), wallMat);
+    solidWall.position.set(0, wallHeight / 2, 0);
+    wallGroup.add(solidWall);
+    return wallGroup;
+  }
+
+  connectedItems.forEach(item => {
+    const itemWidth = (item.doorWidth || item.width) * (item.scaleX || 1);
+    const isWin = (item.nameTag || item.mepName || '').includes('شباك');
+    
+    const winSillHeight = isWin ? 100 : 0;
+    const itemHeight = isWin ? 120 : 210;
+    const lintelHeight = wallHeight - (winSillHeight + itemHeight);
+    const sideWidth = (wallWidth - itemWidth) / 2;
+
+    // الجزء الأيسر من الجدار
+    const leftPart = new THREE.Mesh(new THREE.BoxGeometry(sideWidth, wallHeight, wallThickness), wallMat);
+    leftPart.position.set(-wallWidth / 2 + sideWidth / 2, wallHeight / 2, 0);
+
+    // الجزء الأيمن من الجدار
+    const rightPart = new THREE.Mesh(new THREE.BoxGeometry(sideWidth, wallHeight, wallThickness), wallMat);
+    rightPart.position.set(wallWidth / 2 - sideWidth / 2, wallHeight / 2, 0);
+
+    // الجزء العلوي فوق الفتحة
+    const lintelPart = new THREE.Mesh(new THREE.BoxGeometry(itemWidth, lintelHeight, wallThickness), wallMat);
+    lintelPart.position.set(0, wallHeight - lintelHeight / 2, 0);
+
+    wallGroup.add(leftPart, rightPart, lintelPart);
+
+    // الجزء السفلي تحت الشباك
+    if (isWin && winSillHeight > 0) {
+      const sillPart = new THREE.Mesh(new THREE.BoxGeometry(itemWidth, winSillHeight, wallThickness), wallMat);
+      sillPart.position.set(0, winSillHeight / 2, 0);
+      wallGroup.add(sillPart);
+    }
+  });
+
+  return wallGroup;
+}
+
 function init3DScene() {
   const container = document.getElementById('canvas3DContainer');
   if (!container) return;
@@ -791,68 +838,46 @@ function build3DScene() {
 
     const roomGroup3D = new THREE.Group();
 
+    // 1. إنشاء الأرضية
     const floorGeo = new THREE.BoxGeometry(w, 2, h);
     const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.position.set(0, 1, 0);
     roomGroup3D.add(floorMesh);
 
+    // حدود الغرفة
     const roomLeft = obj.left - (obj.originX === 'center' ? w / 2 : 0);
     const roomTop = obj.top - (obj.originY === 'center' ? h / 2 : 0);
     const roomRight = roomLeft + w;
     const roomBottom = roomTop + h;
 
-    const connectedDoors = doorsAndWindows.filter(d => {
-      const dB = d.getBoundingRect();
-      return (dB.left + dB.width >= roomLeft - 10 &&
-              dB.left <= roomRight + 10 &&
-              dB.top + dB.height >= roomTop - 10 &&
-              dB.top <= roomBottom + 10);
-    });
+    // تجميع الأبواب والنوافذ حسب موقعها على الجدار
+    const backItems = doorsAndWindows.filter(d => Math.abs(d.top - roomTop) < 30);
+    const frontItems = doorsAndWindows.filter(d => Math.abs(d.top - roomBottom) < 30);
+    const leftItems = doorsAndWindows.filter(d => Math.abs(d.left - roomLeft) < 30);
+    const rightItems = doorsAndWindows.filter(d => Math.abs(d.left - roomRight) < 30);
 
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, transparent: true, opacity: 0.85 });
-    const backWallDoor = connectedDoors.find(d => Math.abs(d.top - roomTop) < 30);
+    // 2. الجدار الخلفي
+    const backWall = createWallWithOpenings(w, wallH, thickness, backItems);
+    backWall.position.set(0, 0, -h / 2);
+    roomGroup3D.add(backWall);
 
-    if (backWallDoor) {
-      const dWidth = (backWallDoor.doorWidth || backWallDoor.width) * (backWallDoor.scaleX || 1);
-      const isWin = (backWallDoor.nameTag || backWallDoor.mepName || '').includes('شباك');
-      
-      const winSillHeight = 100;
-      const itemHeight = isWin ? 120 : 210;
-      const lintelH = wallH - (isWin ? (winSillHeight + itemHeight) : itemHeight);
-      const segWidth = (w - dWidth) / 2;
+    // 3. الجدار الأمامي
+    const frontWall = createWallWithOpenings(w, wallH, thickness, frontItems);
+    frontWall.position.set(0, 0, h / 2);
+    roomGroup3D.add(frontWall);
 
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(segWidth, wallH, thickness), wallMat);
-      leftWall.position.set(-w / 2 + segWidth / 2, wallH / 2, -h / 2);
+    // 4. الجدار الأيسر
+    const leftWall = createWallWithOpenings(h, wallH, thickness, leftItems);
+    leftWall.rotation.y = Math.PI / 2;
+    leftWall.position.set(-w / 2, 0, 0);
+    roomGroup3D.add(leftWall);
 
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(segWidth, wallH, thickness), wallMat);
-      rightWall.position.set(w / 2 - segWidth / 2, wallH / 2, -h / 2);
-
-      const lintel = new THREE.Mesh(new THREE.BoxGeometry(dWidth, lintelH, thickness), wallMat);
-      lintel.position.set(0, wallH - (lintelH / 2), -h / 2);
-      roomGroup3D.add(leftWall, rightWall, lintel);
-
-      if (isWin) {
-        const sillWall = new THREE.Mesh(new THREE.BoxGeometry(dWidth, winSillHeight, thickness), wallMat);
-        sillWall.position.set(0, winSillHeight / 2, -h / 2);
-        roomGroup3D.add(sillWall);
-      }
-    } else {
-      const wallBack = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, thickness), wallMat);
-      wallBack.position.set(0, wallH / 2, -h / 2);
-      roomGroup3D.add(wallBack);
-    }
-
-    const wallFront = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, thickness), wallMat);
-    wallFront.position.set(0, wallH / 2, h / 2);
-
-    const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(thickness, wallH, h), wallMat);
-    wallLeft.position.set(-w / 2, wallH / 2, 0);
-
-    const wallRight = new THREE.Mesh(new THREE.BoxGeometry(thickness, wallH, h), wallMat);
-    wallRight.position.set(w / 2, wallH / 2, 0);
-
-    roomGroup3D.add(wallFront, wallLeft, wallRight);
+    // 5. الجدار الأيمن
+    const rightWall = createWallWithOpenings(h, wallH, thickness, rightItems);
+    rightWall.rotation.y = Math.PI / 2;
+    rightWall.position.set(w / 2, 0, 0);
+    roomGroup3D.add(rightWall);
 
     roomGroup3D.position.set(centerX - (canvas.width / 2), 0, centerY - (canvas.height / 2));
     roomGroup3D.rotation.y = -(obj.angle || 0) * (Math.PI / 180);
