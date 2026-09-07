@@ -899,7 +899,6 @@ function animate3D() {
   if (is3DActive) {
     animFrameId = requestAnimationFrame(animate3D);
     
-    // محاكاة الدوران المستمر لمحاور المحركات الشغالة
     interactive3DObjects.forEach(obj => {
       if (obj.userData && obj.userData.type === 'motor' && obj.userData.canvasObj && obj.userData.canvasObj.isOn) {
         if (obj.userData.shaft) {
@@ -1086,7 +1085,6 @@ function build3DScene() {
     const posZ = centerY - (canvas.height / 2);
     const name = obj.nameTag || obj.mepName || '';
 
-    // --- عناصر تفاعلية محسنة للـ 3D ---
     if (obj.mepType === 'electrical' && (name.includes('لمبة') || name.includes('سبوت'))) {
       const bulbGeo = new THREE.SphereGeometry(8, 16, 16);
       const bulbMat = new THREE.MeshBasicMaterial({ color: obj.isOn ? 0xffffaa : 0x555555 });
@@ -1182,20 +1180,17 @@ function handle3DClick(event) {
     const data = target.userData;
 
     if (data) {
-      // 1. تشغيل / إطفاء الإضاءة في 3D
       if (data.type === 'light') {
         data.canvasObj.isOn = !data.canvasObj.isOn;
         data.lightRef.intensity = data.canvasObj.isOn ? 1.5 : 0;
         data.matRef.color.setHex(data.canvasObj.isOn ? 0xffffaa : 0x555555);
       }
 
-      // 2. تشغيل / إيقاف الموتور في 3D
       if (data.type === 'motor') {
         data.canvasObj.isOn = !data.canvasObj.isOn;
         target.material.color.setHex(data.canvasObj.isOn ? 0x22c55e : 0x64748b);
       }
 
-      // 3. فتح وغلق الأبواب
       if (data.type === 'door' || (target.parent && target.parent.userData && target.parent.userData.type === 'door')) {
         const doorData = data.type === 'door' ? data : target.parent.userData;
         const pivotGroup = doorData.pivotGroup || target.parent;
@@ -1457,10 +1452,10 @@ window.calculateVoltageDropBridge = function(current, length, resistance, voltag
   if (voltage <= 0) return 0;
   return ((2 * current * length * (resistance / 1000)) / voltage) * 100;
 };
+
 let currentSelectedObject = null;
 let actionBarElem = null;
 
-// إنشاء عنصر الشريط العائم في الصفحة
 function createFloatingActionBar() {
     if (actionBarElem) return;
     actionBarElem = document.createElement('div');
@@ -1473,7 +1468,6 @@ function createFloatingActionBar() {
     document.querySelector('.canvas-container-wrapper').appendChild(actionBarElem);
 }
 
-// تحديث موقع أزرار التحكم فوق العنصر المحدد
 function updateActionBarPosition() {
     if (!currentSelectedObject || !canvas) {
         if (actionBarElem) actionBarElem.classList.add('hidden');
@@ -1481,7 +1475,6 @@ function updateActionBarPosition() {
     }
 
     const bound = currentSelectedObject.getBoundingRect();
-    // إحداثيات مركز العنصر من الأعلى
     const posX = bound.left + bound.width / 2;
     const posY = bound.top - 10; 
 
@@ -1490,7 +1483,6 @@ function updateActionBarPosition() {
     actionBarElem.classList.remove('hidden');
 }
 
-// الاستماع لأحداث التحديد والحركة في Fabric.js
 canvas.on('selection:created', (e) => {
     currentSelectedObject = e.selected[0];
     createFloatingActionBar();
@@ -1511,7 +1503,6 @@ canvas.on('object:moving', updateActionBarPosition);
 canvas.on('object:scaling', updateActionBarPosition);
 canvas.on('object:rotating', updateActionBarPosition);
 
-// 1️⃣ وظيفة الحذف (×)
 window.deleteSelectedObject = function() {
     if (!currentSelectedObject) return;
     canvas.remove(currentSelectedObject);
@@ -1520,15 +1511,14 @@ window.deleteSelectedObject = function() {
     if (actionBarElem) actionBarElem.classList.add('hidden');
 };
 
-// 2️⃣ وظيفة النسخ (C) مع إزاحة بسيطة
 window.cloneSelectedObject = function() {
     if (!currentSelectedObject) return;
     
     currentSelectedObject.clone((cloned) => {
         canvas.discardActiveObject();
         cloned.set({
-            left: cloned.left + 20, // إزاحة بسيطة للأفق
-            top: cloned.top + 20,   // إزاحة بسيطة للرأس
+            left: cloned.left + 20, 
+            top: cloned.top + 20,   
             evented: true
         });
         
@@ -1545,7 +1535,6 @@ window.cloneSelectedObject = function() {
     });
 };
 
-// 3️⃣ فتح نافذة تغيير الأبعاد (T)
 window.openObjectDimModal = function() {
     if (!currentSelectedObject) return;
     
@@ -1555,10 +1544,9 @@ window.openObjectDimModal = function() {
     const inputH = document.getElementById('objHeightInput');
     const inputZ = document.getElementById('objDepthInput');
 
-    // قراءة الأبعاد الحالية بحساب الـ Scale
     const currentW = Math.round(currentSelectedObject.width * currentSelectedObject.scaleX);
     const currentH = Math.round(currentSelectedObject.height * currentSelectedObject.scaleY);
-    const currentZ = currentSelectedObject.height3D || 2800; // افتراضي للارتفاع 3D
+    const currentZ = currentSelectedObject.height3D || 2800; 
 
     nameLabel.innerText = currentSelectedObject.label || currentSelectedObject.type || 'عنصر';
     inputW.value = currentW;
@@ -1568,12 +1556,10 @@ window.openObjectDimModal = function() {
     modal.classList.remove('hidden');
 };
 
-// إغلاق نافذة الأبعاد
 window.closeObjectDimModal = function() {
     document.getElementById('objectDimensionModal').classList.add('hidden');
 };
 
-// تطبيق الأبعاد الجديدة على العنصر
 window.applyObjectDimensions = function() {
     if (!currentSelectedObject) return;
 
@@ -1582,11 +1568,10 @@ window.applyObjectDimensions = function() {
     const newZ = parseFloat(document.getElementById('objDepthInput').value);
 
     if (newW > 0 && newH > 0) {
-        // تغيير المقاس بحساب الـ Scale المناسب
         currentSelectedObject.set({
             scaleX: newW / currentSelectedObject.width,
             scaleY: newH / currentSelectedObject.height,
-            height3D: newZ // حفظ الارتفاع الخاص بـ 3D
+            height3D: newZ 
         });
 
         currentSelectedObject.setCoordinates();
@@ -1595,4 +1580,73 @@ window.applyObjectDimensions = function() {
     }
 
     closeObjectDimModal();
+};
+
+// --- 13. Advanced Electrical Load Analysis & Panel Schedulers ---
+const AdvancedElectricalEngine = {
+  calculateBreakerSize: function(totalPowerKW, isThreePhase = false) {
+    const voltage = isThreePhase ? 380 : 220;
+    const currentA = isThreePhase 
+      ? (totalPowerKW * 1000) / (Math.sqrt(3) * voltage * 0.85) 
+      : (totalPowerKW * 1000) / (voltage * 0.9);
+      
+    const standardBreakers = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200];
+    const recommended = standardBreakers.find(b => b >= currentA) || 250;
+    
+    return {
+      calculatedCurrentA: currentA.toFixed(2),
+      recommendedBreakerA: recommended
+    };
+  },
+
+  generateEngineeringReport: function() {
+    const totalCurrent = parseFloat(EngineState.simulationMetrics.totalCurrentA) || 0;
+    const totalPower = parseFloat(EngineState.simulationMetrics.totalPowerKW) || 0;
+    const breakerCheck = this.calculateBreakerSize(totalPower, false);
+
+    let recommendations = [];
+    if (totalCurrent > 32) {
+      recommendations.push("⚠️ الحمل الكلي مرتفع، يُنصح بالتحويل إلى نظام 3-Phase (ثلاثي الفازات).");
+    } else {
+      recommendations.push("✅ الحمل الكلي ضمن النطاق الآمن للاستخدام المنزلي الفردي.");
+    }
+
+    if (totalCurrent > 16 && !EngineState.panelState.mainBreaker) {
+      recommendations.push("⚡ تنبيه: القاطع الرئيسي غير مفعل أو قد يتعرض للفصل عند التشغيل الكامل.");
+    }
+
+    return {
+      totalPowerKW: totalPower,
+      totalCurrentA: totalCurrent,
+      recommendedBreaker: `${breakerCheck.recommendedBreakerA} أمبير`,
+      notes: recommendations
+    };
+  }
+};
+
+window.updateAdvancedElectricalPanel = function() {
+  const report = AdvancedElectricalEngine.generateEngineeringReport();
+  
+  const reportContainer = document.getElementById('advanced-electrical-report');
+  if (reportContainer) {
+    reportContainer.innerHTML = `
+      <div class="panel-report-card">
+        <h4>تقرير التحليل الكهربائي المتقدم</h4>
+        <p><strong>إجمالي القدرة:</strong> ${report.totalPowerKW} kW</p>
+        <p><strong>التيار المسحوب:</strong> ${report.totalCurrentA} A</p>
+        <p><strong>القاطع المقترح:</strong> ${report.recommendedBreaker}</p>
+        <div class="recommendations-list">
+          ${report.notes.map(note => `<span>${note}</span>`).join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+};
+
+const originalUpdateSimulationEngine = window.updateSimulationEngine || function(){};
+window.updateSimulationEngine = function() {
+  if (typeof originalUpdateSimulationEngine === 'function') {
+    originalUpdateSimulationEngine();
+  }
+  updateAdvancedElectricalPanel();
 };
