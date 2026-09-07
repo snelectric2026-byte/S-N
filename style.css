@@ -250,12 +250,21 @@ body, html {
 }
 
 .sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: var(--sidebar-width);
+  max-width: 85vw;
   height: 100%;
   display: flex;
   flex-direction: column;
-  z-index: 90;
-  transition: transform var(--transition-speed) ease;
+  z-index: 9999 !important;
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.8);
+  transition: transform var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
   overflow-y: auto;
   overflow-x: hidden;
   padding: 15px;
@@ -488,7 +497,7 @@ body, html {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 10000;
   opacity: 1;
   visibility: visible;
   transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -614,7 +623,7 @@ body, html {
   box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
 }
 
-/* مفتاح التشغيل Toggle Switch تعديل الاتجاه للغة العربية RTL */
+/* مفتاح التشغيل Toggle Switch */
 .toggle-switch {
   position: relative;
   width: 44px;
@@ -677,11 +686,11 @@ body, html {
 .bom-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.03);
 }
+
 /* ==========================================================================
-   تنسيقات تجاوب الشاشات الصغيرة (Responsive Mobile Styles)
+   9. تجاوب الشاشات الصغيرة (Responsive Mobile Styles)
    ========================================================================== */
 @media screen and (max-width: 768px) {
-  /* ضبط الشريط العلوي ليظهر بشكل منظّم */
   .top-bar {
     height: auto;
     flex-wrap: wrap;
@@ -695,7 +704,6 @@ body, html {
     overflow-x: auto;
   }
 
-  /* تصغير أزرار التحكم والخطوط */
   .glass-btn {
     padding: 5px 8px;
     font-size: 11px;
@@ -706,7 +714,6 @@ body, html {
     font-size: 16px;
   }
 
-  /* تحسين شريط الحالة السفلي */
   .status-console {
     bottom: 5px;
     left: 5px;
@@ -719,44 +726,6 @@ body, html {
   }
 
   .bottom-status-bar {
-    display: none; /* إخفاء الشريط السفي غير الضروري لزيادة مساحة العمل */
+    display: none;
   }
-
-  /* جعل القوائم الجانبية تمتد بالكامل */
-  .sidebar {
-    width: 100vw;
-  }
-}
-/* إصلاح تموضع القائمة الجانبية على الموبايل */
-.sidebar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 280px;
-  max-width: 85vw;
-  background: rgba(15, 23, 42, 0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 9999 !important; /* لضمان ظهورها فوق كل الأزرار والشاشات */
-  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.8);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* حالة الإغلاق: إخفاء القائمة لليمين */
-.sidebar.collapsed {
-  transform: translateX(100%);
-}
-
-/* overlay خلفية عند فتح القائمة */
-.sidebar-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9998;
-  display: none;
-}
-
-.sidebar-overlay.active {
-  display: block;
 }
