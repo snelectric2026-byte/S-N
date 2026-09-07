@@ -65,7 +65,6 @@
         .svg-container { width: 260px; height: 130px; overflow: visible; }
         .svg-text { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 110px; }
 
-        /* تم تعديل حرف S للون الأحمر وحرف N للون الأزرق هنا */
         .part-s { fill: #ff3344; opacity: 0; transform-origin: 50px 70px; animation: pulseIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 0.2s; filter: drop-shadow(0 2px 8px rgba(255, 51, 68, 0.4)); }
         .part-bolt { fill: #f5b813; opacity: 0; transform-origin: 130px 65px; animation: pulseIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 0.8s; filter: drop-shadow(0 2px 10px rgba(245, 184, 19, 0.6)); }
         .part-n { fill: #0088ff; opacity: 0; transform-origin: 200px 70px; animation: pulseIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 1.4s; filter: drop-shadow(0 2px 8px rgba(0, 136, 255, 0.4)); }
@@ -89,7 +88,7 @@
         }
 
         .electric-part span:nth-child(1) { animation-delay: 2.2s, 0.00s; }
-        .electric-part span:nth-child(2) { animation-delay: 2.3s, 0.03s; }
+        .electric-part span:nth-child(2) { animation-delay: 2.3s, 0.06s; }
         .electric-part span:nth-child(3) { animation-delay: 2.4s, 0.06s; }
         .electric-part span:nth-child(4) { animation-delay: 2.5s, 0.09s; }
         .electric-part span:nth-child(5) { animation-delay: 2.6s, 0.12s; }
@@ -115,15 +114,9 @@
         
         @keyframes fadeIn { to { opacity: 1; } }
 
-        .splash-hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-
+        .splash-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
         .hidden { display: none !important; }
 
-        /* شريط الحالة للـ Console السفلي */
         .bottom-console-bar {
             position: fixed;
             bottom: 0;
@@ -159,7 +152,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
-    <!-- ملف الـ CSS الخارجي والبيانات -->
+    <!-- ملف الـ CSS الخارجي -->
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#020617">
 </head>
@@ -186,7 +179,7 @@
         </div>
     </div>
 
-    <!-- مدخل قراءة ملفات JSON للمشاريع المحفوظة -->
+    <!-- مدخل قراءة ملفات JSON -->
     <input type="file" id="fileInputJSON" accept=".json" style="display: none;" />
 
     <!-- الشريط العلوي الرئيسي -->
@@ -197,7 +190,6 @@
             <span style="font-size:12px; color:#f5b813; margin-right: 6px; font-weight: bold;">MEP v3.5</span>
         </div>
 
-        <!-- أزرار أطوار التشغيل (التصميم vs المحاكاة) -->
         <div style="display: flex; gap: 4px; background: rgba(0,0,0,0.4); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
             <button type="button" id="btn-mode-design" class="glass-btn active" onclick="window.setEngineMode('design')" style="border-radius: 6px;">📐 تصميم</button>
             <button type="button" id="btn-mode-simulation" class="glass-btn" onclick="window.setEngineMode('simulation')" style="border-radius: 6px; background: rgba(245, 184, 19, 0.2); border-color: #f5b813; color: #f5b813;">⚡ محاكاة تفاعلية</button>
@@ -214,24 +206,18 @@
     </header>
 
     <div class="app-layout">
-        <!-- منطقة Canvas 2D Haupt & 3D Container -->
         <main class="canvas-container-wrapper" style="position: relative; flex: 1; height: calc(100vh - 86px); overflow: hidden;">
-            
-            <!-- بيئة الرسم 2D -->
             <div id="canvas2DContainer" style="width: 100%; height: 100%; position: absolute; top:0; left:0;">
                 <canvas id="mepCanvas"></canvas>
             </div>
-
-            <!-- بيئة العرض 3D -->
             <div id="canvas3DContainer" style="width: 100%; height: 100%; position: absolute; top:0; left:0; display: none; background: #020617;">
                 <div style="position: absolute; top: 15px; right: 15px; z-index: 10; background: rgba(15,23,42,0.8); padding: 8px 12px; border-radius: 8px; color: #00f2fe; border: 1px solid #00f2fe; font-size: 12px; backdrop-filter: blur(4px);">
                     🖱️ التحكم: اسحب للتدوير | Wheel للتقريب | اضغط على الأبواب لفتحها
                 </div>
             </div>
-
         </main>
 
-        <!-- الشريط الجانبي للأدوات والقوائم -->
+        <!-- الشريط الجانبي للأدوات والمكتبات -->
         <aside class="sidebar collapsed" id="sidebarMenu">
             <div class="sidebar-header">
                 <span>قائمة العناصر والأدوات</span>
@@ -240,16 +226,16 @@
 
             <div class="sidebar-scroll-content">
 
-                <!-- اسم وإشارة اللوحة/الشكل المحدد -->
+                <!-- تخصيص المسمى -->
                 <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                     <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">تخصيص العنصر / المسمى</div>
-                    <input type="text" id="shapeLabelInput" placeholder="أدخل اسم العنصر custom..." style="width: 100%; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px; margin-bottom: 6px;">
+                    <input type="text" id="shapeLabelInput" placeholder="أدخل اسم العنصر..." style="width: 100%; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px; margin-bottom: 6px;">
                     <label style="font-size: 11px; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
                         <input type="checkbox" id="hideShapeLabelCheckbox"> إخفاء النص التوضيحي من Canvas
                     </label>
                 </div>
 
-                <!-- الألوان والتنسيق -->
+                <!-- ألوان الرسم -->
                 <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                     <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">ألوان الرسم والتحديد</div>
                     <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
@@ -260,58 +246,88 @@
                     </div>
                 </div>
 
-                <!-- مساحات وحجرات معمارية -->
+                <!-- 1. المساحات والحجرات والجدران المعمارية -->
                 <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('roomsSec', event)">🏛️ مساحات وحجرات معمارية ▾</button>
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('roomsSec', event)">🏛️ حجر وغرف ومعماري ▾</button>
                     <div class="popup-window" id="roomsSec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'غرفة نوم')"><span class="icon">🛏️</span> غرفة نوم</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'غرفة أطفال')"><span class="icon">🧸</span> غرفة أطفال</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'استقبال (صالة)')"><span class="icon">🛋️</span> استقبال</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'حجرة استقبال')"><span class="icon">🛋️</span> حجرة استقبال</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'حجرة أطفال')"><span class="icon">🧸</span> حجرة أطفال</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'حجرة')"><span class="icon">🛏️</span> حجرة نوم</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'طرقة (ممر)')"><span class="icon">🚪</span> طرقة (ممر)</button>
+                        <button type="button" onclick="window.startDrawingWall && window.startDrawingWall()"><span class="icon">🧱</span> جدار معماري</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'حمام رئيسي')"><span class="icon">🛁</span> حمام</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'مطبخ')"><span class="icon">🍳</span> مطبخ</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'منطقة حرة (بدون اسم)')"><span class="icon">🏡</span> حديقة / مساحة حرّة</button>
                     </div>
                 </div>
 
-                <!-- نجارة وأبواب -->
+                <!-- 2. النجارة (الأبواب والشبابيك) -->
                 <div class="category-item">
                     <button type="button" class="category-title-btn" onclick="window.togglePopup('carpentrySec', event)">🚪 نجارة (أبواب وشبابيك) ▾</button>
                     <div class="popup-window" id="carpentrySec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب مفرد')"><span class="icon">🚪</span> باب مفرد</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'شباك زجاجي')"><span class="icon">🪟</span> شباك زجاجي</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب مفرد يمين')"><span class="icon">🚪</span> باب مفرد يمين (◨)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب مفرد شمال')"><span class="icon">🚪</span> باب مفرد شمال (◧)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب جرار')"><span class="icon">↔️</span> باب جرار (⇥)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب مزدوج')"><span class="icon">🚪🚪</span> باب مزدوج (◫)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب بلكونة')"><span class="icon">🚪🪟</span> باب بلكونة</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'شباك مفرد')"><span class="icon">🪟</span> شباك مفرد (🔲)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'شباك مزدوج')"><span class="icon">🪟🪟</span> شباك مزدوج (⧉)</button>
                     </div>
                 </div>
 
-                <!-- مفاتيح وبرايز الإنارة -->
+                <!-- 3. المكونات والتأسيسات الكهربائية -->
                 <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('electricSec', event)">💡 مفاتيح ومآخذ الإنارة ▾</button>
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('electricSec', event)">💡 تأسيسات وتوصيلات الكهرباء ▾</button>
                     <div class="popup-window" id="electricSec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح إنارة')"><span class="icon">🔘</span> مفتاح إنارة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'بريزة كهرباء')"><span class="icon">🔌</span> بريزة قوى</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'لمبة / سبوت')"><span class="icon">💡</span> وحدة إنارة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('power', 'لوحة توزيع رئيسية')"><span class="icon">📦</span> لوحة توزيع</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح إنارة')"><span class="icon">🔘</span> مفتاح إنارة (S)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح ديفاتوري')"><span class="icon">🔄</span> مفتاح ديفاتوري (S₃w)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح أحادي')"><span class="icon">1️⃣</span> مفتاح أحادي (S₁)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح ثنائي')"><span class="icon">2️⃣</span> مفتاح ثنائي (S₂)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح ثلاثي')"><span class="icon">3️⃣</span> مفتاح ثلاثي (S₃)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح سخان')"><span class="icon">♨️</span> مفتاح سخان (20A)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح تكييف')"><span class="icon">❄️</span> مفتاح تكييف (32A)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'لمبة سقف')"><span class="icon">⊗</span> لمبة سقف (⊗)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'اسبوت حائط')"><span class="icon">🌤️</span> اسبوت حائط (◐)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'اسبوت أرضي')"><span class="icon">🔘</span> اسبوت أرضي (◉)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'شريط ليد (بالمتر)')"><span class="icon">〰️</span> شريط ليد (LED Strip)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'بريزة')"><span class="icon">🔌</span> بريزة عادية (⏚)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'بريزة قوى')"><span class="icon">⚡</span> بريزة قوى (⚙️)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('power', 'لوحة توزيع L1,L2,L3')"><span class="icon">📦</span> لوحة L1, L2, L3</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('power', 'بار أرضي')"><span class="icon">⏚</span> بار أرضي (Earth Bar)</button>
                     </div>
                 </div>
 
-                <!-- سباكة ومستلزمات صحية وخطوط الأنابيب -->
+                <!-- 4. السباكة والصرف الصحي -->
                 <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('plumbingSec', event)">🚰 السباكة والأنابيب ▾</button>
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('plumbingSec', event)">🚰 السباكة والصرف الصحي ▾</button>
                     <div class="popup-window" id="plumbingSec">
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'حوض وش')"><span class="icon">🧴</span> حوض وش (Sink)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'حوض مطبخ')"><span class="icon">🚰</span> حوض مطبخ (Kitchen Sink)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'قاعدة حمام')"><span class="icon">🚽</span> قاعدة حمام (WC)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'دش')"><span class="icon">🚿</span> دش (Shower)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'بانيو')"><span class="icon">🛁</span> بانيو (Bathtub)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'بلاعة')"><span class="icon">🕳️</span> بلاعة (Floor Drain)</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'بير صرف عمومي')"><span class="icon">⭕</span> بير صرف عمومي (Manhole)</button>
                         <button type="button" onclick="window.startDrawingLine && window.startDrawingLine('cold_pipe')" style="background: rgba(2, 132, 199, 0.2); color: #38bdf8;"><span class="icon">🔵</span> رسم خط بارد</button>
                         <button type="button" onclick="window.startDrawingLine && window.startDrawingLine('hot_pipe')" style="background: rgba(239, 68, 68, 0.2); color: #f87171;"><span class="icon">🔴</span> رسم خط ساخن</button>
                         <button type="button" onclick="window.startDrawingLine && window.startDrawingLine('drain_pipe')" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;"><span class="icon">🟢</span> رسم خط صرف</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'حوض مغسلة')"><span class="icon">🚰</span> حوض مغسلة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'مرحاض صحي')"><span class="icon">🚽</span> مرحاض</button>
                     </div>
                 </div>
 
-                <!-- أثاث وتجهيزات -->
+                <!-- 5. الأثاث والأجهزة المنزلية -->
                 <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('furnitureSec', event)">🛋️ أثاث وتجهيزات ▾</button>
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('furnitureSec', event)">🛋️ الأثاث والأجهزة المنزلية ▾</button>
                     <div class="popup-window" id="furnitureSec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'سرير نوم')"><span class="icon">🛏️</span> سرير نوم</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كنبة انتريه')"><span class="icon">🛋️</span> كنبة أنتريه</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'طاولة خشبي')"><span class="icon">🪵</span> طاولة</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'سرير كبير')"><span class="icon">🛏️</span> سرير كبير</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'سرير أطفال')"><span class="icon">🛏️</span> سرير أطفال</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كومدينو')"><span class="icon">🔲</span> كومدينو</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'ترابيزة سفرة')"><span class="icon">🍽️</span> ترابيزة سفرة</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كرسي خشب')"><span class="icon">🪑</span> كرسي خشب</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كنبة انتريه')"><span class="icon">🛋️</span> كنبة انتريه</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كرسي انتريه')"><span class="icon">💺</span> كرسي انتريه</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'سخان مياه')"><span class="icon">🔥</span> سخان مياه</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'بوتاجاز')"><span class="icon">🍳</span> بوتاجاز</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'غسالة أطباق')"><span class="icon">🍽️</span> غسالة أطباق</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'غسالة اتوماتيك')"><span class="icon">🧺</span> غسالة اتوماتيك</button>
                     </div>
                 </div>
 
@@ -343,7 +359,7 @@
         </aside>
     </div>
 
-    <!-- الشريط السفلي (Console) للسيستم والمحاكاة -->
+    <!-- الشريط السفلي (Console) -->
     <div class="bottom-console-bar">
         <div class="console-item">
             <span>الحالة:</span>
@@ -371,7 +387,7 @@
         </div>
     </div>
 
-    <!-- Modal إدخال أبعاد الغرفة عند إضافتها -->
+    <!-- Modal أبعاد الغرفة -->
     <div class="modal-overlay hidden" id="roomDimensionModal">
         <div class="glass-card modal-box">
             <div class="modal-title">🏠 تحديد أبعاد المساحة والمعمارية</div>
@@ -401,7 +417,7 @@
         </div>
     </div>
 
-    <!-- Modal لوحة القواطع الكهربائية والمحاكاة -->
+    <!-- Modal لوحة القواطع الكهربائية -->
     <div id="panel-modal" class="modal-overlay hidden">
         <div class="glass-card modal-box panel-control-box">
             <div class="modal-header-custom">
@@ -452,7 +468,7 @@
         </div>
     </div>
 
-    <!-- Modal جدول حصر الكميات (BOM) -->
+    <!-- Modal حصر الكميات (BOM) -->
     <div id="bom-modal" class="modal-overlay hidden">
         <div class="glass-card modal-box wide-modal-box">
             <div class="modal-header-custom">
@@ -471,7 +487,6 @@
                         </tr>
                     </thead>
                     <tbody id="bom-table-body">
-                        <!-- يتم ملؤه ديناميكياً بواسطة script.js -->
                     </tbody>
                 </table>
             </div>
@@ -482,10 +497,8 @@
         </div>
     </div>
 
-    <!-- ربط محرك الـ WebAssembly (C++) المكتوب بـ Emscripten/C++ -->
+    <!-- المحركات الخارجية -->
     <script src="mep_engine.js"></script>
-
-    <!-- ربط ملف الـ JavaScript الخارجي الموحد -->
     <script src="script.js"></script>
 </body>
 </html>
