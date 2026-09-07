@@ -48,7 +48,8 @@ body, html {
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: opacity 0.5s ease, visibility 0.5s;
+  /* إطالة زمن التلاشي ليكون أكثر سلاسة وطولاً */
+  transition: opacity 1.5s ease, visibility 1.5s ease;
 }
 
 #splash-screen.fade-out {
@@ -427,6 +428,14 @@ body, html {
   left: 0;
 }
 
+/* تم تعديل خصائص اللمس هنا للسماح بالتفاعل وحفظ إيماءات اللمس */
+#canvas2DContainer, #mepCanvas, .upper-canvas {
+  touch-action: manipulation !important;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 #canvas3DContainer.hidden-3d {
   opacity: 0;
   pointer-events: none;
@@ -728,10 +737,4 @@ body, html {
   .bottom-status-bar {
     display: none;
   }
-}
-#canvas2DContainer, #mepCanvas, .upper-canvas {
-    touch-action: none !important;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
 }
