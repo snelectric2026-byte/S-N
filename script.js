@@ -1210,17 +1210,28 @@ function setupEventListeners() {
   window.addEventListener('click', closeAllPopups);
 }
 
-// دالة لحساب هبوط الجهد باستدعاء محرك C++ عبر WebAssembly
-function calculateVoltageDropWithCPP(current, length, resistance, voltage) {
-    // التحقق من اكتمال تحميل محرك C++ Wasm
-    if (typeof Module !== 'undefined' && Module._calculate_voltage_drop) {
-        // استدعاء الدالة المكتوبة بـ C++ مباشرة
-        const dropPercent = Module._calculate_voltage_drop(current, length, resistance, voltage);
-        console.log(`⚡ النتيجة من محرك C++: ${dropPercent.toFixed(2)}%`);
-        return dropPercent;
-    } else {
-        console.warn("⚠️ محرك C++ غير جاهز بعد، سيتم استخدام الحساب الافتراضي.");
-        // حساب افتراضي احتياطي
-        return ((2 * current * length * (resistance / 1000)) / voltage) * 100;
+// --- 10. WebAssembly & C++ Calculation Engine Bridge ---
+let wasmCalculateVoltageDrop = null;
+
+if (typeof Module !== 'undefined') {
+  Module['onRuntimeInitialized'] = function() {
+    if (typeof Module.cwrap === 'function') {
+      wasmCalculateVoltageDrop = Module.cwrap('calculate_voltage_drop', 'number', ['number', 'number', 'number', 'number']);
+      console.log("✅ تم ربط محرك C++ (WebAssembly) بنجاح مع script.js");
     }
-                        }
+  };
+}
+
+window.calculateVoltageDropBridge = function(current, length, resistance, voltage) {
+  if (typeof wasmCalculateVoltageDrop === 'function') {
+    return wasmCalculateVoltageDrop(current, length, resistance, voltage);
+  } 
+  
+  if (typeof Module !== 'undefined' && typeof Module._calculate_voltage_drop === 'function') {
+    return Module._calculate_voltage_drop(current, length, resistance, voltage);
+  }
+
+  console.warn("⚠️ محرك C++ غير جاهز بعد، تم استخدام الحساب الاحتياطي بـ JS.");
+  if (voltage <= 0) return 0;
+  return ((2 * current * length * (resistance / 1000)) / voltage) * 100;
+};
