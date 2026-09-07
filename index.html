@@ -191,24 +191,24 @@
     <!-- الشريط العلوي الرئيسي -->
     <header class="top-bar">
         <div class="brand">
-            <button type="button" class="btn-top" onclick="window.toggleSidebar()" style="padding: 4px 8px; font-size: 16px;">☰</button>
+            <button type="button" class="glass-btn" onclick="window.toggleSidebar()" style="padding: 4px 10px; font-size: 16px;">☰</button>
             <span class="logo-sn">S</span><span class="logo-bolt">⚡</span><span class="logo-sn">N</span>
             <span style="font-size:12px; color:#f5b813; margin-right: 6px; font-weight: bold;">MEP v3.5</span>
         </div>
 
         <!-- أزرار أطوار التشغيل (التصميم vs المحاكاة) -->
         <div style="display: flex; gap: 4px; background: rgba(0,0,0,0.4); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-            <button type="button" id="btn-mode-design" class="btn-top active" onclick="window.setEngineMode('design')" style="border-radius: 6px;">📐 تصميم</button>
-            <button type="button" id="btn-mode-simulation" class="btn-top" onclick="window.setEngineMode('simulation')" style="border-radius: 6px; background: rgba(245, 184, 19, 0.2); border-color: #f5b813; color: #f5b813;">⚡ محاكاة تفاعلية</button>
+            <button type="button" id="btn-mode-design" class="glass-btn active" onclick="window.setEngineMode('design')" style="border-radius: 6px;">📐 تصميم</button>
+            <button type="button" id="btn-mode-simulation" class="glass-btn" onclick="window.setEngineMode('simulation')" style="border-radius: 6px; background: rgba(245, 184, 19, 0.2); border-color: #f5b813; color: #f5b813;">⚡ محاكاة تفاعلية</button>
         </div>
 
         <div class="top-actions">
-            <button type="button" id="btnView3D" class="btn-top" onclick="window.toggle3DView()" title="مشاهدة والتجول 3D">🧊 3D</button>
-            <button type="button" id="snapToggleBtn" class="btn-top active" onclick="window.toggleSnap()" title="الانجذاب للشبكة">🧲 الانجذاب: مفعل</button>
-            <button type="button" id="btnInventory" class="btn-top" onclick="window.toggleBOMModal()" style="background:#2563eb; border-color:#2563eb;" title="حصر الكميات">📊 حصر BOM</button>
-            <button type="button" id="btnUndo" class="btn-top" onclick="window.undoLastAction()" title="تراجع">↩️ تراجع</button>
-            <button type="button" id="btnSave" class="btn-top" onclick="window.exportPNG()" title="تصدير صورة">🖼️ صورة</button>
-            <button type="button" class="btn-top" onclick="window.exportTXTReport()" title="تصدير تقرير نصي">📄 تقرير</button>
+            <button type="button" id="btnView3D" class="glass-btn" onclick="window.toggle3DView()" title="مشاهدة والتجول 3D">🧊 3D</button>
+            <button type="button" id="snapToggleBtn" class="glass-btn active" onclick="window.toggleSnap()" title="الانجذاب للشبكة">🧲 الانجذاب: مفعل</button>
+            <button type="button" id="btnInventory" class="glass-btn" onclick="window.toggleBOMModal()" style="background:#2563eb; border-color:#2563eb;" title="حصر الكميات">📊 حصر BOM</button>
+            <button type="button" id="btnUndo" class="glass-btn" onclick="window.undoLastAction()" title="تراجع">↩️ تراجع</button>
+            <button type="button" id="btnSave" class="glass-btn" onclick="window.exportPNG()" title="تصدير صورة">🖼️ صورة</button>
+            <button type="button" class="glass-btn" onclick="window.exportTXTReport()" title="تصدير تقرير نصي">📄 تقرير</button>
         </div>
     </header>
 
@@ -231,7 +231,12 @@
         </main>
 
         <!-- الشريط الجانبي للأدوات والقوائم -->
-        <aside class="sidebar" id="sidebarMenu" style="height: calc(100vh - 86px);">
+        <aside class="sidebar collapsed" id="sidebarMenu">
+            <div class="sidebar-header">
+                <span>قائمة العناصر والأدوات</span>
+                <button type="button" class="close-btn" onclick="window.toggleSidebar()">✕</button>
+            </div>
+
             <div class="sidebar-scroll-content">
 
                 <!-- اسم وإشارة اللوحة/الشكل المحدد -->
@@ -248,55 +253,65 @@
                     <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">ألوان الرسم والتحديد</div>
                     <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
                         <label style="font-size: 11px;">لون الحدود:</label>
-                        <input type="color" id="strokeColorPicker" value="#00f2fe" onchange="window.updateSelectedObjectColor('stroke', this.value)">
+                        <input type="color" id="strokeColorPicker" value="#00f2fe" onchange="window.updateSelectedObjectColor && window.updateSelectedObjectColor('stroke', this.value)">
                         <label style="font-size: 11px;">لون التعبئة:</label>
-                        <input type="color" id="fillColorPicker" value="#0284c7" onchange="window.updateSelectedObjectColor('fill', this.value)">
+                        <input type="color" id="fillColorPicker" value="#0284c7" onchange="window.updateSelectedObjectColor && window.updateSelectedObjectColor('fill', this.value)">
                     </div>
                 </div>
 
                 <!-- مساحات وحجرات معمارية -->
-                <div class="accordion-header" onclick="window.togglePopup('roomsSec', event)">🏛️ مساحات وحجرات معمارية ▾</div>
-                <div class="popup-window" id="roomsSec">
-                    <button type="button" onclick="window.addCatalogItem('architectural', 'غرفة نوم')"><span class="icon">🛏️</span> غرفة نوم</button>
-                    <button type="button" onclick="window.addCatalogItem('architectural', 'غرفة أطفال')"><span class="icon">🧸</span> غرفة أطفال</button>
-                    <button type="button" onclick="window.addCatalogItem('architectural', 'استقبال (صالة)')"><span class="icon">🛋️</span> استقبال</button>
-                    <button type="button" onclick="window.addCatalogItem('architectural', 'حمام رئيسي')"><span class="icon">🛁</span> حمام</button>
-                    <button type="button" onclick="window.addCatalogItem('architectural', 'مطبخ')"><span class="icon">🍳</span> مطبخ</button>
-                    <button type="button" onclick="window.addCatalogItem('architectural', 'منطقة حرة (بدون اسم)')"><span class="icon">🏡</span> حديقة / مساحة حرّة</button>
+                <div class="category-item">
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('roomsSec', event)">🏛️ مساحات وحجرات معمارية ▾</button>
+                    <div class="popup-window" id="roomsSec">
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'غرفة نوم')"><span class="icon">🛏️</span> غرفة نوم</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'غرفة أطفال')"><span class="icon">🧸</span> غرفة أطفال</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'استقبال (صالة)')"><span class="icon">🛋️</span> استقبال</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'حمام رئيسي')"><span class="icon">🛁</span> حمام</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'مطبخ')"><span class="icon">🍳</span> مطبخ</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'منطقة حرة (بدون اسم)')"><span class="icon">🏡</span> حديقة / مساحة حرّة</button>
+                    </div>
                 </div>
 
                 <!-- نجارة وأبواب -->
-                <div class="accordion-header" onclick="window.togglePopup('carpentrySec', event)">🚪 نجارة (أبواب وشبابيك) ▾</div>
-                <div class="popup-window" id="carpentrySec">
-                    <button type="button" onclick="window.addCatalogItem('carpentry', 'باب مفرد')"><span class="icon">🚪</span> باب مفرد</button>
-                    <button type="button" onclick="window.addCatalogItem('carpentry', 'شباك زجاجي')"><span class="icon">🪟</span> شباك زجاجي</button>
+                <div class="category-item">
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('carpentrySec', event)">🚪 نجارة (أبواب وشبابيك) ▾</button>
+                    <div class="popup-window" id="carpentrySec">
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب مفرد')"><span class="icon">🚪</span> باب مفرد</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'شباك زجاجي')"><span class="icon">🪟</span> شباك زجاجي</button>
+                    </div>
                 </div>
 
                 <!-- مفاتيح وبرايز الإنارة -->
-                <div class="accordion-header" onclick="window.togglePopup('electricSec', event)">💡 مفاتيح ومآخذ الإنارة ▾</div>
-                <div class="popup-window" id="electricSec">
-                    <button type="button" onclick="window.addCatalogItem('electrical', 'مفتاح إنارة')"><span class="icon">🔘</span> مفتاح إنارة</button>
-                    <button type="button" onclick="window.addCatalogItem('electrical', 'بريزة كهرباء')"><span class="icon">🔌</span> بريزة قوى</button>
-                    <button type="button" onclick="window.addCatalogItem('electrical', 'لمبة / سبوت')"><span class="icon">💡</span> وحدة إنارة</button>
-                    <button type="button" onclick="window.addCatalogItem('power', 'لوحة توزيع رئيسية')"><span class="icon">📦</span> لوحة توزيع</button>
+                <div class="category-item">
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('electricSec', event)">💡 مفاتيح ومآخذ الإنارة ▾</button>
+                    <div class="popup-window" id="electricSec">
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح إنارة')"><span class="icon">🔘</span> مفتاح إنارة</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'بريزة كهرباء')"><span class="icon">🔌</span> بريزة قوى</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'لمبة / سبوت')"><span class="icon">💡</span> وحدة إنارة</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('power', 'لوحة توزيع رئيسية')"><span class="icon">📦</span> لوحة توزيع</button>
+                    </div>
                 </div>
 
                 <!-- سباكة ومستلزمات صحية وخطوط الأنابيب -->
-                <div class="accordion-header" onclick="window.togglePopup('plumbingSec', event)">🚰 السباكة والأنابيب ▾</div>
-                <div class="popup-window" id="plumbingSec">
-                    <button type="button" onclick="window.startDrawingLine('cold_pipe')" style="background: rgba(2, 132, 199, 0.2); border-color: #0284c7; color: #38bdf8;"><span class="icon">🔵</span> رسم خط بارد</button>
-                    <button type="button" onclick="window.startDrawingLine('hot_pipe')" style="background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #f87171;"><span class="icon">🔴</span> رسم خط ساخن</button>
-                    <button type="button" onclick="window.startDrawingLine('drain_pipe')" style="background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #4ade80;"><span class="icon">🟢</span> رسم خط صرف</button>
-                    <button type="button" onclick="window.addCatalogItem('plumbing', 'حوض مغسلة')"><span class="icon">🚰</span> حوض مغسلة</button>
-                    <button type="button" onclick="window.addCatalogItem('plumbing', 'مرحاض صحي')"><span class="icon">🚽</span> مرحاض</button>
+                <div class="category-item">
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('plumbingSec', event)">🚰 السباكة والأنابيب ▾</button>
+                    <div class="popup-window" id="plumbingSec">
+                        <button type="button" onclick="window.startDrawingLine && window.startDrawingLine('cold_pipe')" style="background: rgba(2, 132, 199, 0.2); color: #38bdf8;"><span class="icon">🔵</span> رسم خط بارد</button>
+                        <button type="button" onclick="window.startDrawingLine && window.startDrawingLine('hot_pipe')" style="background: rgba(239, 68, 68, 0.2); color: #f87171;"><span class="icon">🔴</span> رسم خط ساخن</button>
+                        <button type="button" onclick="window.startDrawingLine && window.startDrawingLine('drain_pipe')" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;"><span class="icon">🟢</span> رسم خط صرف</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'حوض مغسلة')"><span class="icon">🚰</span> حوض مغسلة</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'مرحاض صحي')"><span class="icon">🚽</span> مرحاض</button>
+                    </div>
                 </div>
 
                 <!-- أثاث وتجهيزات -->
-                <div class="accordion-header" onclick="window.togglePopup('furnitureSec', event)">🛋️ أثاث وتجهيزات ▾</div>
-                <div class="popup-window" id="furnitureSec">
-                    <button type="button" onclick="window.addCatalogItem('furniture', 'سرير نوم')"><span class="icon">🛏️</span> سرير نوم</button>
-                    <button type="button" onclick="window.addCatalogItem('furniture', 'كنبة انتريه')"><span class="icon">🛋️</span> كنبة أنتريه</button>
-                    <button type="button" onclick="window.addCatalogItem('furniture', 'طاولة خشبي')"><span class="icon">🪵</span> طاولة</button>
+                <div class="category-item">
+                    <button type="button" class="category-title-btn" onclick="window.togglePopup('furnitureSec', event)">🛋️ أثاث وتجهيزات ▾</button>
+                    <div class="popup-window" id="furnitureSec">
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'سرير نوم')"><span class="icon">🛏️</span> سرير نوم</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كنبة انتريه')"><span class="icon">🛋️</span> كنبة أنتريه</button>
+                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'طاولة خشبي')"><span class="icon">🪵</span> طاولة</button>
+                    </div>
                 </div>
 
                 <!-- نصوص حرّة -->
@@ -304,7 +319,7 @@
                     <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">إضافة نص حر على المخطط</div>
                     <div style="display: flex; gap: 4px;">
                         <input type="text" id="freeTextInput" placeholder="اكتب ملاحظة..." style="flex:1; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px;">
-                        <button type="button" onclick="window.addFreeText()" class="btn-top" style="padding: 4px 8px;">إضافة</button>
+                        <button type="button" onclick="window.addFreeText && window.addFreeText()" class="glass-btn" style="padding: 4px 8px;">إضافة</button>
                     </div>
                 </div>
 
@@ -314,11 +329,11 @@
                     <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>المقياس (1px = mm):</label>
-                            <input type="number" id="scaleInput" value="10" min="1" max="100" style="width: 50px; background:#000; color:#fff; border:1px solid #333; text-align:center;" onchange="window.updateScaleSettings()">
+                            <input type="number" id="scaleInput" value="10" min="1" max="100" style="width: 50px; background:#000; color:#fff; border:1px solid #333; text-align:center;" onchange="window.updateScaleSettings && window.updateScaleSettings()">
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>خطوة الشبكة (mm):</label>
-                            <input type="number" id="gridInput" value="100" min="10" step="10" style="width: 50px; background:#000; color:#fff; border:1px solid #333; text-align:center;" onchange="window.updateScaleSettings()">
+                            <input type="number" id="gridInput" value="100" min="10" step="10" style="width: 50px; background:#000; color:#fff; border:1px solid #333; text-align:center;" onchange="window.updateScaleSettings && window.updateScaleSettings()">
                         </div>
                     </div>
                 </div>
@@ -356,14 +371,11 @@
     </div>
 
     <!-- Modal إدخال أبعاد الغرفة عند إضافتها -->
-    <div class="modal-overlay" id="roomDimensionModal" style="display: none;">
-        <div class="modal-card">
-            <div class="modal-header">
-                <span>🏠 تحديد أبعاد المساحة والمعمارية</span>
-                <button type="button" onclick="window.closeRoomModal()" style="background:none; border:none; color:#fff; cursor:pointer; font-size:18px;">✕</button>
-            </div>
-            <div class="modal-body">
-                <div style="font-size: 13px; color: #cbd5e1; font-weight: 600; margin-bottom: 10px;">
+    <div class="modal-overlay hidden" id="roomDimensionModal">
+        <div class="glass-card modal-box">
+            <div class="modal-title">🏠 تحديد أبعاد المساحة والمعمارية</div>
+            <div class="modal-inputs">
+                <div style="font-size: 13px; color: #cbd5e1; font-weight: 600;">
                     المساحة: <span id="modalRoomName" style="color: #00f2fe; font-weight: bold;">غرفة</span>
                 </div>
                 <div style="display: flex; gap: 8px;">
@@ -381,50 +393,50 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn-top" onclick="window.closeRoomModal()">إلغاء</button>
-                <button type="button" class="btn-top" style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color:#000; font-weight:900;" onclick="window.confirmRoomDimensions()">إضافة للمخطط 📐</button>
+            <div class="modal-actions">
+                <button type="button" class="glass-btn" onclick="window.closeRoomModal()">إلغاء</button>
+                <button type="button" class="glass-btn btn-primary" onclick="window.confirmRoomDimensions && window.confirmRoomDimensions()">إضافة للمخطط 📐</button>
             </div>
         </div>
     </div>
 
     <!-- Modal لوحة القواطع الكهربائية والمحاكاة -->
     <div id="panel-modal" class="modal-overlay hidden">
-        <div class="modal-card" style="max-width: 500px;">
-            <div class="modal-header">
-                <span>⚡ لوحة التحكم في القواطع الرئيسية والفرعية</span>
-                <button type="button" onclick="window.closePanelModal()" style="background:none; border:none; color:#fff; cursor:pointer; font-size:18px;">✕</button>
+        <div class="glass-card modal-box panel-control-box">
+            <div class="modal-header-custom">
+                <span class="modal-title">⚡ لوحة التحكم في القواطع الرئيسية والفرعية</span>
+                <button type="button" onclick="window.closePanelModal()" class="close-btn">✕</button>
             </div>
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+            <div class="modal-inputs">
+                <div class="breaker-card">
                     <div>
                         <strong style="color: #f5b813; font-size: 14px;">القاطع الرئيسي (Main Breaker)</strong>
                         <div style="font-size: 11px; color: #94a3b8;">الحالة: <span id="main-breaker-status" class="status-tag off">مفصول (مفتوح)</span></div>
                     </div>
-                    <label class="switch" style="position: relative; display: inline-block; width: 46px; height: 24px;">
-                        <input type="checkbox" onchange="window.toggleMainBreaker(this.checked)">
-                        <span class="slider round"></span>
-                    </label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="mainBreakerToggle" onchange="window.toggleMainBreaker && window.toggleMainBreaker(this.checked)">
+                        <label for="mainBreakerToggle"></label>
+                    </div>
                 </div>
 
                 <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-top: 4px;">الدوائر الفرعية (Branch Circuits)</div>
                 
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
+                <div class="branch-grid">
+                    <div class="branch-item">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span id="branch-1-indicator" class="indicator-led off"></span>
                             <span>دائرة الإنارة C1 (10A)</span>
                         </div>
-                        <input type="checkbox" onchange="window.toggleBranch(1, this.checked)">
+                        <input type="checkbox" onchange="window.toggleBranch && window.toggleBranch(1, this.checked)">
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
+                    <div class="branch-item">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span id="branch-2-indicator" class="indicator-led off"></span>
                             <span>دائرة البرايز C2 (16A)</span>
                         </div>
                         <input type="checkbox" onchange="window.toggleBranch(2, this.checked)">
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
+                    <div class="branch-item">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span id="branch-3-indicator" class="indicator-led off"></span>
                             <span>دائرة التكييف C3 (20A)</span>
@@ -433,28 +445,28 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="margin-top: 15px; text-align: left;">
-                <button type="button" class="btn-top" onclick="window.closePanelModal()">إغلاق</button>
+            <div class="modal-actions">
+                <button type="button" class="glass-btn" onclick="window.closePanelModal()">إغلاق</button>
             </div>
         </div>
     </div>
 
     <!-- Modal جدول حصر الكميات (BOM) -->
     <div id="bom-modal" class="modal-overlay hidden">
-        <div class="modal-card" style="max-width: 700px;">
-            <div class="modal-header">
-                <span>📊 جدول حصر الكميات الشامل (Bill of Materials)</span>
-                <button type="button" onclick="window.toggleBOMModal()" style="background:none; border:none; color:#fff; cursor:pointer; font-size:18px;">✕</button>
+        <div class="glass-card modal-box wide-modal-box">
+            <div class="modal-header-custom">
+                <span class="modal-title">📊 جدول حصر الكميات الشامل (Bill of Materials)</span>
+                <button type="button" onclick="window.toggleBOMModal()" class="close-btn">✕</button>
             </div>
-            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: right;">
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="bom-table">
                     <thead>
-                        <tr style="background: rgba(0,242,254,0.1); color: #00f2fe; border-bottom: 1px solid rgba(0,242,254,0.3);">
-                            <th style="padding: 8px;">اسم العنصر</th>
-                            <th style="padding: 8px;">التصنيف</th>
-                            <th style="padding: 8px;">العدد</th>
-                            <th style="padding: 8px;">المواصفات</th>
-                            <th style="padding: 8px;">الحالة</th>
+                        <tr>
+                            <th>اسم العنصر</th>
+                            <th>التصنيف</th>
+                            <th>العدد</th>
+                            <th>المواصفات</th>
+                            <th>الحالة</th>
                         </tr>
                     </thead>
                     <tbody id="bom-table-body">
@@ -462,9 +474,9 @@
                     </tbody>
                 </table>
             </div>
-            <div class="modal-footer" style="margin-top: 15px; display: flex; justify-content: space-between;">
-                <button type="button" class="btn-top" onclick="window.exportTXTReport()">تصدير كتقرير نصي 📄</button>
-                <button type="button" class="btn-top" onclick="window.toggleBOMModal()">إغلاق</button>
+            <div class="modal-actions" style="justify-content: space-between;">
+                <button type="button" class="glass-btn btn-primary" onclick="window.exportTXTReport && window.exportTXTReport()">تصدير كتقرير نصي 📄</button>
+                <button type="button" class="glass-btn" onclick="window.toggleBOMModal()">إغلاق</button>
             </div>
         </div>
     </div>
