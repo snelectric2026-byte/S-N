@@ -915,4 +915,39 @@ body, html {
   .status-grid-cell:nth-child(n+5) {
     display: none;
   }
+
+/* أزرار التحكم السريعة الخاصة بالعنصر المحدد */
+.object-action-bar {
+    position: absolute;
+    display: flex;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(0, 242, 254, 0.5);
+    border-radius: 6px;
+    padding: 3px;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    transform: translate(-50%, -100%);
+    pointer-events: auto;
+}
+
+.obj-btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.obj-btn-delete:hover { background: #ef4444; color: #fff; }
+.obj-btn-clone:hover { background: #3b82f6; color: #fff; }
+.obj-btn-resize:hover { background: #f5b813; color: #000; }
 }
