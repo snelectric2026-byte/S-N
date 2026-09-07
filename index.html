@@ -504,6 +504,36 @@
 
     <!-- المحركات الخارجية -->
     <script src="mep_engine.js"></script>
-    <script src="script.js"></script>
+   
+    <!-- Modal تغيير أبعاد العنصر (T) -->
+<div class="modal-overlay hidden" id="objectDimensionModal">
+    <div class="glass-card modal-box">
+        <div class="modal-title">📐 تعديل أبعاد العنصر</div>
+        <div class="modal-inputs" style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-size: 12px; color: #cbd5e1; font-weight: 600;">
+                العنصر الحالي: <span id="targetObjectName" style="color: #00f2fe; font-weight: bold;">-</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div style="flex:1;">
+                    <label style="font-size:11px; color:#00f2fe;">العرض (W - mm):</label>
+                    <input type="number" id="objWidthInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:11px; color:#00f2fe;">الطول / الارتفاع 2D (H - mm):</label>
+                    <input type="number" id="objHeightInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:11px; color:#00f2fe;">الارتفاع 3D (Z - mm):</label>
+                    <input type="number" id="objDepthInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="glass-btn" onclick="closeObjectDimModal()">إلغاء</button>
+            <button type="button" class="glass-btn btn-primary" onclick="applyObjectDimensions()">تطبيق الأبعاد 📐</button>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
 </body>
 </html>
