@@ -1,6 +1,6 @@
 /* ==========================================================================
-   S⚡N electric MEP Engine v3.5 - Ultimate Combined Engine
-   Combines Core Simulation (v3.0) & Advanced BIM 3D / Touch Logic (v3.3)
+   S⚡N electric MEP Engine v4.0 - Master Full Combined Engine
+   Combines Core Simulation, BIM 3D, MEP Algorithms, Symbols & Storage Bridge
    ========================================================================== */
 
 // --- 1. Global Engine State & Variables ---
@@ -41,7 +41,113 @@ let lastPosX = 0;
 let lastPosY = 0;
 const interactive3DObjects = [];
 
-// --- 2. Engine Initialization ---
+// --- 2. Advanced MEP Calculation Modules ---
+const MEPCalculator = {
+  // 1. حساب هبوط الجهد (Voltage Drop)
+  calculateVoltageDrop: function(currentA, lengthM, wireSizeMm2, isThreePhase = false) {
+    const resistivityCu = 0.0175; // مقاومة النحاس
+    const voltage = isThreePhase ? 380 : 220;
+    const factor = isThreePhase ? Math.sqrt(3) : 2;
+    
+    const voltageDropVolts = (factor * lengthM * currentA * resistivityCu) / wireSizeMm2;
+    const percentage = (voltageDropVolts / voltage) * 100;
+    
+    return {
+      dropVolts: voltageDropVolts.toFixed(2),
+      percentage: percentage.toFixed(2),
+      isAcceptable: percentage <= 3.0 // المعيار القياسي <= 3%
+    };
+  },
+
+  // 2. حساب أقطار مواسير التغذية والصرف (Pipe Sizing)
+  calculatePipeSize: function(fixtureUnits, isDrainage = false) {
+    if (isDrainage) {
+      if (fixtureUnits <= 2) return { diameterMm: 32, inch: '1.25"' };
+      if (fixtureUnits <= 6) return { diameterMm: 50, inch: '2"' };
+      if (fixtureUnits <= 20) return { diameterMm: 75, inch: '3"' };
+      if (fixtureUnits <= 160) return { diameterMm: 110, inch: '4"' };
+      return { diameterMm: 160, inch: '6"' };
+    } else {
+      if (fixtureUnits <= 2) return { diameterMm: 15, inch: '1/2"' };
+      if (fixtureUnits <= 8) return { diameterMm: 20, inch: '3/4"' };
+      if (fixtureUnits <= 30) return { diameterMm: 25, inch: '1"' };
+      return { diameterMm: 32, inch: '1.25"' };
+    }
+  },
+
+  // 3. التوزيع التلقائي للأحمال على الفازات الثلاث (3-Phase Load Balancing)
+  balancePhases: function(loadsList) {
+    const sortedLoads = [...loadsList].sort((a, b) => b.powerKW - a.powerKW);
+    const phases = { R: { total: 0, items: [] }, S: { total: 0, items: [] }, T: { total: 0, items: [] } };
+
+    sortedLoads.forEach(item => {
+      const minPhase = Object.keys(phases).reduce((a, b) => phases[a].total < phases[b].total ? a : b);
+      phases[minPhase].total += item.powerKW;
+      phases[minPhase].items.push(item);
+    });
+
+    return phases;
+  }
+};
+
+// --- 3. Project Storage & Robustness Management ---
+const ProjectManager = {
+  saveProjectToStorage: async function(projectName, userId = null) {
+    try {
+      if (!canvas) throw new Error("مساحة الرسم غير جاهزة");
+
+      const projectData = {
+        name: projectName,
+        updatedAt: new Date().toISOString(),
+        canvasJSON: canvas.toJSON([
+          'mepType', 'mepName', 'nameTag', 'symbolType', 'roomWallHeight', 
+          'roomWidth', 'roomHeight', 'isLine', 'lineLengthMm', 'doorWidth', 
+          'isOn', 'isOpen', 'flowActive', 'loadCurrent', 'isPanel'
+        ]),
+        metrics: EngineState.simulationMetrics
+      };
+
+      if (!userId) {
+        localStorage.setItem(`mep_project_${projectName}`, JSON.stringify(projectData));
+        return { success: true, message: "تم حفظ المشروع محلياً بنجاح!" };
+      }
+
+      const response = await fetch('/api/projects/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, projectData })
+      });
+
+      if (!response.ok) throw new Error("فشل الحفظ على السيرفر");
+      return await response.json();
+
+    } catch (error) {
+      console.error("Project Save Error:", error);
+      return { success: false, message: `تعذر الحفظ: ${error.message}` };
+    }
+  },
+
+  loadProjectFromStorage: function(projectName) {
+    try {
+      const dataStr = localStorage.getItem(`mep_project_${projectName}`);
+      if (!dataStr) throw new Error("المشروع غير موجود");
+
+      const projectData = JSON.parse(dataStr);
+      canvas.loadFromJSON(projectData.canvasJSON, () => {
+        canvas.renderAll();
+        if (typeof drawGrid === 'function') drawGrid();
+        if (typeof updateSimulationEngine === 'function') updateSimulationEngine();
+      });
+
+      return { success: true, message: "تم تحميل المشروع بنجاح" };
+    } catch (error) {
+      console.error("Project Load Error:", error);
+      return { success: false, message: `فشل التحميل: ${error.message}` };
+    }
+  }
+};
+
+// --- 4. Engine Initialization ---
 window.addEventListener('DOMContentLoaded', () => {
   initSplashScreen();
   initCanvas2D();
@@ -63,7 +169,7 @@ function initSplashScreen() {
   }, 1500);
 }
 
-// --- 3. 2D Fabric.js Engine & Grid System ---
+// --- 5. 2D Fabric.js Engine & Grid System ---
 function initCanvas2D() {
   const container = document.getElementById('canvas2DContainer');
   const canvasElem = document.getElementById('mepCanvas');
@@ -121,7 +227,7 @@ function drawGrid() {
   }
 }
 
-// --- 4. Catalog & Add Items Logic ---
+// --- 6. Catalog & Add Items Logic ---
 window.addCatalogItem = function(category, itemName) {
   saveCanvasState();
   if (category === 'architectural' && itemName !== 'منطقة حرة (بدون اسم)') {
@@ -235,6 +341,7 @@ window.addSymbol = function(type, name) {
   let mepCategory = 'general';
   let loadA = 0.5;
 
+  // --- رموز الكهرباء والطاقة الموسعة ---
   if (type.includes('switch') || displayName.includes('مفتاح')) {
     mepCategory = 'electrical';
     const c = new fabric.Circle({ radius: 12, fill: 'transparent', stroke: '#f5b813', strokeWidth: 2, originX: 'center', originY: 'center' });
@@ -255,6 +362,53 @@ window.addSymbol = function(type, name) {
     const l1 = new fabric.Line([-10, -10, 10, 10], { stroke: '#00f2fe', strokeWidth: 2 });
     const l2 = new fabric.Line([10, -10, -10, 10], { stroke: '#00f2fe', strokeWidth: 2 });
     shapes.push(c, l1, l2);
+  } else if (type.includes('motor') || displayName.includes('موتور')) {
+    mepCategory = 'electrical'; loadA = 8.5;
+    const c = new fabric.Circle({ radius: 18, fill: 'transparent', stroke: '#38bdf8', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const t = new fabric.Text('M', { fontSize: 16, fontWeight: 'bold', fill: '#38bdf8', originX: 'center', originY: 'center' });
+    shapes.push(c, t);
+  } else if (type.includes('ac_unit') || displayName.includes('تكييف')) {
+    mepCategory = 'electrical'; loadA = 12.0;
+    const box = new fabric.Rect({ width: 60, height: 25, fill: 'rgba(56, 189, 248, 0.2)', stroke: '#38bdf8', strokeWidth: 2, rx: 3, originX: 'center', originY: 'center' });
+    const t = new fabric.Text('A/C', { fontSize: 10, fill: '#ffffff', originX: 'center', originY: 'center' });
+    shapes.push(box, t);
+  } else if (type.includes('generator') || displayName.includes('مولد')) {
+    mepCategory = 'power';
+    const c = new fabric.Circle({ radius: 20, fill: 'rgba(245, 184, 19, 0.2)', stroke: '#f5b813', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const t = new fabric.Text('G', { fontSize: 16, fontWeight: 'bold', fill: '#f5b813', originX: 'center', originY: 'center' });
+    shapes.push(c, t);
+  } 
+
+  // --- رموز السباكة والميكانيكا الموسعة ---
+  else if (type.includes('water_pump') || displayName.includes('مضخة')) {
+    mepCategory = 'plumbing';
+    const c = new fabric.Circle({ radius: 16, fill: 'transparent', stroke: '#0284c7', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const p = new fabric.Path('M -8 8 L 0 -10 L 8 8 Z', { fill: '#0284c7', originX: 'center', originY: 'center' });
+    shapes.push(c, p);
+  } else if (type.includes('water_heater') || displayName.includes('سخان')) {
+    mepCategory = 'plumbing'; loadA = 6.8;
+    const c = new fabric.Circle({ radius: 22, fill: 'rgba(239, 68, 68, 0.15)', stroke: '#ef4444', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const t = new fabric.Text('WH', { fontSize: 12, fill: '#ef4444', originX: 'center', originY: 'center' });
+    shapes.push(c, t);
+  } else if (type.includes('floor_drain') || displayName.includes('بلاعة')) {
+    mepCategory = 'plumbing';
+    const c1 = new fabric.Circle({ radius: 14, fill: 'transparent', stroke: '#22c55e', strokeWidth: 2, originX: 'center', originY: 'center' });
+    const c2 = new fabric.Circle({ radius: 6, fill: '#22c55e', originX: 'center', originY: 'center' });
+    shapes.push(c1, c2);
+  } else if (type.includes('plumbing') || displayName.includes('حوض') || displayName.includes('مرحاض')) {
+    mepCategory = 'plumbing';
+    const outer = new fabric.Rect({ width: 36, height: 36, fill: 'rgba(2, 132, 199, 0.2)', stroke: '#0284c7', strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
+    const inner = new fabric.Circle({ radius: 10, fill: 'transparent', stroke: '#0284c7', strokeWidth: 2, originX: 'center', originY: 'center' });
+    shapes.push(outer, inner);
+  } 
+
+  // --- رموز النجارة والمعمار الموسعة ---
+  else if (type.includes('sliding_door') || displayName.includes('باب سحاب')) {
+    mepCategory = 'carpentry';
+    const frame = new fabric.Rect({ width: 100, height: 10, fill: 'transparent', stroke: '#ff4757', strokeWidth: 1, originX: 'center', originY: 'center' });
+    const d1 = new fabric.Line([-50, -2, 0, -2], { stroke: '#ff4757', strokeWidth: 3 });
+    const d2 = new fabric.Line([0, 2, 50, 2], { stroke: '#ff4757', strokeWidth: 3 });
+    shapes.push(frame, d1, d2);
   } else if (type.includes('carpentry') || displayName.includes('باب') || displayName.includes('شباك')) {
     mepCategory = 'carpentry';
     const isWindow = displayName.includes('شباك');
@@ -304,11 +458,6 @@ window.addSymbol = function(type, name) {
       const box = new fabric.Rect({ width: 120, height: 80, fill: 'rgba(168, 85, 247, 0.2)', stroke: strokeCol, strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
       shapes.push(box);
     }
-  } else if (type.includes('plumbing') || displayName.includes('حوض') || displayName.includes('مرحاض')) {
-    mepCategory = 'plumbing';
-    const outer = new fabric.Rect({ width: 36, height: 36, fill: 'rgba(2, 132, 199, 0.2)', stroke: '#0284c7', strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
-    const inner = new fabric.Circle({ radius: 10, fill: 'transparent', stroke: '#0284c7', strokeWidth: 2, originX: 'center', originY: 'center' });
-    shapes.push(outer, inner);
   } else if (type.includes('power') || displayName.includes('لوحة') || displayName.includes('قاطع')) {
     mepCategory = 'power';
     const isPanel = displayName.includes('لوحة');
@@ -351,7 +500,7 @@ window.addSymbol = function(type, name) {
   updateSimulationEngine();
 };
 
-// --- 5. Simulation Logic & Panel Controls ---
+// --- 7. Simulation Logic & Panel Controls ---
 window.setEngineMode = function(mode) {
   EngineState.mode = mode;
   
@@ -469,7 +618,7 @@ window.toggleBranch = function(branchNum, checked) {
   updateSimulationEngine();
 };
 
-// --- 6. Zoom & Pan & Touch Interaction System ---
+// --- 8. Zoom & Pan & Touch Interaction System ---
 function setupZoomAndPan() {
   if (!canvas) return;
 
@@ -515,7 +664,6 @@ function setupZoomAndPan() {
     }
   });
 
-  // Touch Controls (Pinch to Zoom & Pan)
   let initialDistance = 0;
   let initialZoom = 1;
 
@@ -665,9 +813,8 @@ window.startDrawingLine = function(lineType) {
   canvas.bringToFront(currentLine);
 };
 
-// --- 7. BIM 3D Engine & Dynamic Wall Cutouts ---
+// --- 9. BIM 3D Engine & Dynamic Wall Cutouts & Interactive Simulation ---
 
-// دالة مساعدة لبناء جدار مفرغ من الأبواب والنوافذ
 function createWallWithOpenings(wallWidth, wallHeight, wallThickness, connectedItems) {
   const wallGroup = new THREE.Group();
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, transparent: true, opacity: 0.85 });
@@ -688,21 +835,17 @@ function createWallWithOpenings(wallWidth, wallHeight, wallThickness, connectedI
     const lintelHeight = wallHeight - (winSillHeight + itemHeight);
     const sideWidth = (wallWidth - itemWidth) / 2;
 
-    // الجزء الأيسر من الجدار
     const leftPart = new THREE.Mesh(new THREE.BoxGeometry(sideWidth, wallHeight, wallThickness), wallMat);
     leftPart.position.set(-wallWidth / 2 + sideWidth / 2, wallHeight / 2, 0);
 
-    // الجزء الأيمن من الجدار
     const rightPart = new THREE.Mesh(new THREE.BoxGeometry(sideWidth, wallHeight, wallThickness), wallMat);
     rightPart.position.set(wallWidth / 2 - sideWidth / 2, wallHeight / 2, 0);
 
-    // الجزء العلوي فوق الفتحة
     const lintelPart = new THREE.Mesh(new THREE.BoxGeometry(itemWidth, lintelHeight, wallThickness), wallMat);
     lintelPart.position.set(0, wallHeight - lintelHeight / 2, 0);
 
     wallGroup.add(leftPart, rightPart, lintelPart);
 
-    // الجزء السفلي تحت الشباك
     if (isWin && winSillHeight > 0) {
       const sillPart = new THREE.Mesh(new THREE.BoxGeometry(itemWidth, winSillHeight, wallThickness), wallMat);
       sillPart.position.set(0, winSillHeight / 2, 0);
@@ -755,6 +898,16 @@ function init3DScene() {
 function animate3D() {
   if (is3DActive) {
     animFrameId = requestAnimationFrame(animate3D);
+    
+    // محاكاة الدوران المستمر لمحاور المحركات الشغالة
+    interactive3DObjects.forEach(obj => {
+      if (obj.userData && obj.userData.type === 'motor' && obj.userData.canvasObj && obj.userData.canvasObj.isOn) {
+        if (obj.userData.shaft) {
+          obj.userData.shaft.rotation.x += 0.2;
+        }
+      }
+    });
+
     if (controls) controls.update();
     renderer.render(scene, camera);
   }
@@ -838,42 +991,35 @@ function build3DScene() {
 
     const roomGroup3D = new THREE.Group();
 
-    // 1. إنشاء الأرضية
     const floorGeo = new THREE.BoxGeometry(w, 2, h);
     const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.position.set(0, 1, 0);
     roomGroup3D.add(floorMesh);
 
-    // حدود الغرفة
     const roomLeft = obj.left - (obj.originX === 'center' ? w / 2 : 0);
     const roomTop = obj.top - (obj.originY === 'center' ? h / 2 : 0);
     const roomRight = roomLeft + w;
     const roomBottom = roomTop + h;
 
-    // تجميع الأبواب والنوافذ حسب موقعها على الجدار
     const backItems = doorsAndWindows.filter(d => Math.abs(d.top - roomTop) < 30);
     const frontItems = doorsAndWindows.filter(d => Math.abs(d.top - roomBottom) < 30);
     const leftItems = doorsAndWindows.filter(d => Math.abs(d.left - roomLeft) < 30);
     const rightItems = doorsAndWindows.filter(d => Math.abs(d.left - roomRight) < 30);
 
-    // 2. الجدار الخلفي
     const backWall = createWallWithOpenings(w, wallH, thickness, backItems);
     backWall.position.set(0, 0, -h / 2);
     roomGroup3D.add(backWall);
 
-    // 3. الجدار الأمامي
     const frontWall = createWallWithOpenings(w, wallH, thickness, frontItems);
     frontWall.position.set(0, 0, h / 2);
     roomGroup3D.add(frontWall);
 
-    // 4. الجدار الأيسر
     const leftWall = createWallWithOpenings(h, wallH, thickness, leftItems);
     leftWall.rotation.y = Math.PI / 2;
     leftWall.position.set(-w / 2, 0, 0);
     roomGroup3D.add(leftWall);
 
-    // 5. الجدار الأيمن
     const rightWall = createWallWithOpenings(h, wallH, thickness, rightItems);
     rightWall.rotation.y = Math.PI / 2;
     rightWall.position.set(w / 2, 0, 0);
@@ -915,7 +1061,7 @@ function build3DScene() {
       doorLeaf.add(handle);
       pivotGroup.add(doorLeaf);
 
-      pivotGroup.userData = { isOpen: false, type: 'door', targetAngle: -Math.PI / 2 };
+      doorLeaf.userData = { isOpen: false, type: 'door', targetAngle: -Math.PI / 2, pivotGroup: pivotGroup };
       interactive3DObjects.push(doorLeaf);
     } else {
       const frameGeo = new THREE.BoxGeometry(itemWidth, itemHeight, 8);
@@ -940,7 +1086,38 @@ function build3DScene() {
     const posZ = centerY - (canvas.height / 2);
     const name = obj.nameTag || obj.mepName || '';
 
-    if (obj.mepType === 'furniture' || name.includes('سرير') || name.includes('كنبة') || name.includes('طاولة')) {
+    // --- عناصر تفاعلية محسنة للـ 3D ---
+    if (obj.mepType === 'electrical' && (name.includes('لمبة') || name.includes('سبوت'))) {
+      const bulbGeo = new THREE.SphereGeometry(8, 16, 16);
+      const bulbMat = new THREE.MeshBasicMaterial({ color: obj.isOn ? 0xffffaa : 0x555555 });
+      const bulbMesh = new THREE.Mesh(bulbGeo, bulbMat);
+      bulbMesh.position.set(posX, 260, posZ);
+
+      const pointLight = new THREE.PointLight(0xffea00, obj.isOn ? 1.5 : 0, 400);
+      pointLight.position.set(posX, 255, posZ);
+      
+      roomMeshGroup.add(bulbMesh, pointLight);
+      
+      bulbMesh.userData = { type: 'light', lightRef: pointLight, matRef: bulbMat, canvasObj: obj };
+      interactive3DObjects.push(bulbMesh);
+    } else if (name.includes('موتور') || (obj.symbolType && obj.symbolType.includes('motor'))) {
+      const motorGeo = new THREE.CylinderGeometry(15, 15, 35, 16);
+      const motorMat = new THREE.MeshStandardMaterial({ color: obj.isOn ? 0x22c55e : 0x64748b });
+      const motorMesh = new THREE.Mesh(motorGeo, motorMat);
+      motorMesh.rotation.z = Math.PI / 2;
+      motorMesh.position.set(posX, 20, posZ);
+
+      const shaftGeo = new THREE.CylinderGeometry(3, 3, 50, 8);
+      const shaftMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db });
+      const shaftMesh = new THREE.Mesh(shaftGeo, shaftMat);
+      shaftMesh.rotation.z = Math.PI / 2;
+      shaftMesh.position.set(posX, 20, posZ);
+
+      roomMeshGroup.add(motorMesh, shaftMesh);
+
+      motorMesh.userData = { type: 'motor', shaft: shaftMesh, canvasObj: obj };
+      interactive3DObjects.push(motorMesh);
+    } else if (obj.mepType === 'furniture' || name.includes('سرير') || name.includes('كنبة') || name.includes('طاولة')) {
       let furnH = 50;
       if (name.includes('سرير')) furnH = 60;
       else if (name.includes('كنبة')) furnH = 80;
@@ -951,12 +1128,6 @@ function build3DScene() {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(posX, furnH / 2, posZ);
       mesh.rotation.y = -(obj.angle || 0) * (Math.PI / 180);
-      roomMeshGroup.add(mesh);
-    } else if (obj.mepType === 'electrical' && (name.includes('لمبة') || name.includes('سبوت'))) {
-      const geo = new THREE.SphereGeometry(12, 16, 16);
-      const mat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(posX, 260, posZ);
       roomMeshGroup.add(mesh);
     } else if (name.includes('بريزة')) {
       const geo = new THREE.BoxGeometry(12, 12, 8);
@@ -1007,28 +1178,49 @@ function handle3DClick(event) {
   const intersects = raycaster.intersectObjects(interactive3DObjects);
 
   if (intersects.length > 0) {
-    const clickedMesh = intersects[0].object;
-    const pivotGroup = clickedMesh.parent;
+    const target = intersects[0].object;
+    const data = target.userData;
 
-    if (pivotGroup && pivotGroup.userData.type === 'door') {
-      const isOpen = pivotGroup.userData.isOpen;
-      const targetRotation = isOpen ? 0 : pivotGroup.userData.targetAngle;
+    if (data) {
+      // 1. تشغيل / إطفاء الإضاءة في 3D
+      if (data.type === 'light') {
+        data.canvasObj.isOn = !data.canvasObj.isOn;
+        data.lightRef.intensity = data.canvasObj.isOn ? 1.5 : 0;
+        data.matRef.color.setHex(data.canvasObj.isOn ? 0xffffaa : 0x555555);
+      }
 
-      const animateDoor = () => {
-        if (Math.abs(pivotGroup.rotation.y - targetRotation) > 0.05) {
-          pivotGroup.rotation.y += (targetRotation - pivotGroup.rotation.y) * 0.15;
-          requestAnimationFrame(animateDoor);
-        } else {
-          pivotGroup.rotation.y = targetRotation;
-          pivotGroup.userData.isOpen = !isOpen;
-        }
-      };
-      animateDoor();
+      // 2. تشغيل / إيقاف الموتور في 3D
+      if (data.type === 'motor') {
+        data.canvasObj.isOn = !data.canvasObj.isOn;
+        target.material.color.setHex(data.canvasObj.isOn ? 0x22c55e : 0x64748b);
+      }
+
+      // 3. فتح وغلق الأبواب
+      if (data.type === 'door' || (target.parent && target.parent.userData && target.parent.userData.type === 'door')) {
+        const doorData = data.type === 'door' ? data : target.parent.userData;
+        const pivotGroup = doorData.pivotGroup || target.parent;
+        const isOpen = doorData.isOpen;
+        const targetRotation = isOpen ? 0 : doorData.targetAngle;
+
+        const animateDoor = () => {
+          if (Math.abs(pivotGroup.rotation.y - targetRotation) > 0.05) {
+            pivotGroup.rotation.y += (targetRotation - pivotGroup.rotation.y) * 0.15;
+            requestAnimationFrame(animateDoor);
+          } else {
+            pivotGroup.rotation.y = targetRotation;
+            doorData.isOpen = !isOpen;
+          }
+        };
+        animateDoor();
+      }
+
+      updateSimulationEngine();
+      if (canvas) canvas.renderAll();
     }
   }
 }
 
-// --- 8. BOM Quantity Table & General Exports ---
+// --- 10. BOM Quantity Table & General Exports ---
 window.toggleBOMModal = function() {
   const modal = document.getElementById('bom-modal');
   if (!modal) return;
@@ -1085,7 +1277,7 @@ window.exportPNG = function() {
 window.exportTXTReport = function() {
   if (!canvas) return;
   let report = `=====================================\n`;
-  report += `   S⚡N ELECTRIC MEP REPORT v3.5     \n`;
+  report += `   S⚡N ELECTRIC MEP REPORT v4.0     \n`;
   report += `=====================================\n\n`;
   report += `تاريخ التقرير: ${new Date().toLocaleString('ar-EG')}\n`;
   report += `الحمل الكهربائي: ${EngineState.simulationMetrics.totalCurrentA} A (${EngineState.simulationMetrics.totalPowerKW} kW)\n`;
@@ -1110,7 +1302,7 @@ window.exportTXTReport = function() {
   link.click();
 };
 
-// --- 9. Utility Functions & UI Callbacks ---
+// --- 11. Utility Functions & UI Callbacks ---
 window.toggleSidebar = function() {
   const sidebar = document.getElementById('sidebarMenu');
   if (sidebar) {
@@ -1240,7 +1432,7 @@ function setupEventListeners() {
   window.addEventListener('click', closeAllPopups);
 }
 
-// --- 10. WebAssembly & C++ Calculation Engine Bridge ---
+// --- 12. WebAssembly & C++ Calculation Engine Bridge ---
 let wasmCalculateVoltageDrop = null;
 
 if (typeof Module !== 'undefined') {
