@@ -257,7 +257,7 @@ body, html {
   z-index: 90;
   transition: transform var(--transition-speed) ease;
   overflow-y: auto;
-  overflow-x: hidden; /* لمنع ظهور شريط الأفق الحاد عند فتح النوافذ المنبثقة */
+  overflow-x: hidden;
   padding: 15px;
   gap: 15px;
 }
@@ -365,7 +365,7 @@ body, html {
   padding: 8px;
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.95);
-  max-height: 250px; /* لضمان قياس آمن يتناسب مع حجم الشاشات دون قطع العناصر */
+  max-height: 250px;
   overflow-y: auto;
 }
 
@@ -418,7 +418,6 @@ body, html {
   left: 0;
 }
 
-/* إخفاء 3D بدون تقليص المساحة المفاجئ لمنع أخطاء Three.js */
 #canvas3DContainer.hidden-3d {
   opacity: 0;
   pointer-events: none;
@@ -642,7 +641,7 @@ body, html {
   content: "";
   height: 16px;
   width: 16px;
-  right: 3px; /* التبديل للجهة اليمنى لدعم اتجاه RTL */
+  right: 3px;
   bottom: 3px;
   background-color: white;
   transition: .3s;
@@ -654,7 +653,7 @@ body, html {
 }
 
 .toggle-switch input:checked + label:before {
-  transform: translateX(-22px); /* تحريك المقبض يساراً بدقة */
+  transform: translateX(-22px);
 }
 
 /* جدول حصر الكميات BOM */
