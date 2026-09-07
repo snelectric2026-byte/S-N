@@ -154,6 +154,7 @@ window.addArchitecturalSpace = function(roomType, roomName) {
   
   if (modalName) modalName.innerText = displayName;
   if (modal) {
+    modal.classList.remove('hidden');
     modal.classList.add('active');
     modal.style.display = 'flex';
   }
@@ -163,6 +164,7 @@ window.closeRoomModal = function() {
   const modal = document.getElementById('roomDimensionModal');
   if (modal) {
     modal.classList.remove('active');
+    modal.classList.add('hidden');
     modal.style.display = 'none';
   }
   EngineState.pendingRoomData = null;
@@ -1086,7 +1088,10 @@ window.exportTXTReport = function() {
 // --- 9. Utility Functions & UI Callbacks ---
 window.toggleSidebar = function() {
   const sidebar = document.getElementById('sidebarMenu');
-  if (sidebar) sidebar.classList.toggle('open');
+  if (sidebar) {
+    sidebar.classList.toggle('open');
+    sidebar.classList.toggle('collapsed');
+  }
 };
 
 window.togglePopup = function(popupId, event) {
@@ -1235,51 +1240,3 @@ window.calculateVoltageDropBridge = function(current, length, resistance, voltag
   if (voltage <= 0) return 0;
   return ((2 * current * length * (resistance / 1000)) / voltage) * 100;
 };
-// ==========================================
-// التفاعل العام مع الواجهة وتفعيل النوافذ والقوائم
-// ==========================================
-
-// فتح وإغلاق القائمة الجانبية (Sidebar)
-window.toggleSidebar = function() {
-    const sidebar = document.getElementById('sidebarMenu');
-    if (sidebar) {
-        sidebar.classList.toggle('collapsed');
-    }
-};
-
-// فتح وإغلاق القوائم المنبثقة والآコーディون (Accordions)
-window.togglePopup = function(id, event) {
-    if (event) event.stopPropagation();
-    const popup = document.getElementById(id);
-    if (popup) {
-        // إغلاق أي قائمة أخرى مفتوحة
-        document.querySelectorAll('.popup-window').forEach(el => {
-            if (el.id !== id) el.classList.remove('active');
-        });
-        popup.classList.toggle('active');
-    }
-};
-
-// التحكم في إغلاق الـ Modals
-window.closeRoomModal = function() {
-    const modal = document.getElementById('roomDimensionModal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.closePanelModal = function() {
-    const modal = document.getElementById('panel-modal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.toggleBOMModal = function() {
-    const modal = document.getElementById('bom-modal');
-    if (modal) modal.classList.toggle('hidden');
-};
-
-// إخفاء Splash Screen بعد التحديث والتحميل
-window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        const splash = document.getElementById('splash-screen');
-        if (splash) splash.classList.add('splash-hidden');
-    }, 2500);
-});
