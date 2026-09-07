@@ -5,10 +5,11 @@ const ASSETS = [
   './style.css',
   './script.js',
   './manifest.json',
-  './Icon.png'
+  './icon.png',
+  './sw.js'
 ];
 
-// 1. التثبيت والتجاوز الفوري للتنتظر
+// 1. التثبيت والتجاوز الفوري للتثبيت
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
@@ -33,7 +34,7 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// 3. استرجاع البيانات مع التحديث في الخلفية
+// 3. استرجع البيانات مع التحديث في الخلفية
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
