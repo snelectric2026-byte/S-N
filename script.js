@@ -9,38 +9,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initApp() {
   console.log("SNelectric UI Engine Initialized.");
-  
-  // تفعيل الاستماع لأزرار كتالوج العناصر (جدران، كهرباء، سباكة، أثاث، لوحات)
   initCatalogListeners();
-  
-  // تفعيل أزرار الأدوات الذكية والتقارير في الواجهة
   initToolBarListeners();
-  
-  // تحديث شريط الحالة الأولي
   updateBottomStatusBar();
 }
 
-// -------------------------------------------------------------------------
-// 1. إدارة إدراج العناصر من القائمة الجانبية
-// -------------------------------------------------------------------------
 function initCatalogListeners() {
   const catalogButtons = document.querySelectorAll('.symbol-btn, [data-element-type]');
   
   catalogButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const type = btn.dataset.type || btn.dataset.elementType || 'electrical';
       const subType = btn.dataset.subtype || btn.innerText.trim();
       
-      // تحديد الأحمال والضغوط الافتراضية حسب التصنيف
       let defaultLoad = 0;
       let defaultPressure = 0;
       
-      if (type === 'electrical') defaultLoad = 15; // 15 أمبير افتراضي للبرايز والإنارة
-      if (type === 'ac') defaultLoad = 25;        // تكييف
-      if (type === 'plumbing') defaultPressure = 2.5; // 2.5 بار للسباكة
+      if (type === 'electrical') defaultLoad = 15;
+      if (type === 'ac') defaultLoad = 25;
+      if (type === 'plumbing') defaultPressure = 2.5;
 
-      // إدراج العنصر عبر المحرك الرئيسي
-      const newElement = window.mepEngine.addElement(type, subType, 150, 150, {
+      window.mepEngine.addElement(type, subType, 150, 150, {
         load: defaultLoad,
         pressure: defaultPressure,
         width: 60,
@@ -54,11 +43,7 @@ function initCatalogListeners() {
   });
 }
 
-// -------------------------------------------------------------------------
-// 2. ربط أزرار الأدوات العلوية والتقارير (BOQ & Validation)
-// -------------------------------------------------------------------------
 function initToolBarListeners() {
-  // زر فحص الأخطاء والتعارضات الهندسية (Validation & Clashes)
   const validateBtn = document.getElementById('validate-btn') || document.querySelector('.btn-validate');
   if (validateBtn) {
     validateBtn.addEventListener('click', () => {
@@ -66,7 +51,6 @@ function initToolBarListeners() {
     });
   }
 
-  // زر التقرير الآلي للمقايسات (BOQ)
   const boqBtn = document.getElementById('boq-btn') || document.querySelector('.btn-boq');
   if (boqBtn) {
     boqBtn.addEventListener('click', () => {
@@ -74,7 +58,6 @@ function initToolBarListeners() {
     });
   }
 
-  // زر حاسبة الكابلات
   const cableBtn = document.getElementById('cable-calc-btn') || document.querySelector('.btn-cable');
   if (cableBtn) {
     cableBtn.addEventListener('click', () => {
@@ -83,11 +66,6 @@ function initToolBarListeners() {
   }
 }
 
-// -------------------------------------------------------------------------
-// 3. التقارير والنوافذ التفاعلية
-// -------------------------------------------------------------------------
-
-// تقرير الفحص الذكي والتعارضات
 function runSmartValidationReport() {
   const errors = window.mepEngine.validateSystem();
   if (errors.length === 0) {
@@ -101,7 +79,6 @@ function runSmartValidationReport() {
   }
 }
 
-// تقرير حصر الكميات الآلي (Automated BOQ)
 function showBOQReportModal() {
   const boq = window.mepEngine.generateBOQ();
   let msg = '📊 تقرير المقايسات وحصر الكميات الآلي (BOQ):\n\n';
@@ -116,7 +93,6 @@ function showBOQReportModal() {
   alert(msg);
 }
 
-// حاسبة مقاطع الكابلات التفاعلية
 function openCableCalculatorModal() {
   const ampsInput = prompt('أدخل قيمة التيار المراد حسابه (بالأمبير):', '16');
   if (!ampsInput) return;
@@ -135,9 +111,6 @@ function openCableCalculatorModal() {
   alert(resultMsg);
 }
 
-// -------------------------------------------------------------------------
-// 4. تحديث شاشة العرض وحالة النظام
-// -------------------------------------------------------------------------
 function updateBottomStatusBar() {
   const loadText = document.getElementById('total-load-text');
   const pressureText = document.getElementById('total-pressure-text');
@@ -147,11 +120,9 @@ function updateBottomStatusBar() {
 }
 
 function renderCanvasElements() {
-  // دالة مخصصة لإعادة رسم عناصر المخطط على الـ Canvas أو منطقة العمل في الـ DOM
   console.log("Rendering elements on canvas:", window.mepEngine.elements.length);
 }
 
-// رسائل التنبيه السريعة (Toast Notification)
 function showToast(message) {
   let toast = document.getElementById('snelectric-toast');
   if (!toast) {
@@ -167,9 +138,6 @@ function showToast(message) {
   }, 3000);
 }
 
-// -------------------------------------------------------------------------
-// 5. اختصارات لوحة المفاتيح الهندسية
-// -------------------------------------------------------------------------
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === 's') {
     e.preventDefault();
