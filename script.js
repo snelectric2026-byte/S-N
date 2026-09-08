@@ -102,7 +102,7 @@ const ProjectManager = {
         canvasJSON: canvas.toJSON([
           'mepType', 'mepName', 'nameTag', 'symbolType', 'roomWallHeight', 
           'roomWidth', 'roomHeight', 'isLine', 'lineLengthMm', 'doorWidth', 
-          'isOn', 'isOpen', 'flowActive', 'loadCurrent', 'isPanel'
+          'isOn', 'isOpen', 'flowActive', 'loadCurrent', 'isPanel', 'height3D'
         ]),
         metrics: EngineState.simulationMetrics
       };
@@ -189,6 +189,9 @@ function initCanvas2D() {
 
   drawGrid();
   saveCanvasState();
+  
+  // [إصلاح الخطأ 1]: تم نقل تهيئة وربط أحداث الـ Canvas والأشرطة هنا لضمان وجود كائن الـ canvas فعلياً
+  setupCanvasRuntimeEvents();
 }
 
 function drawGrid() {
@@ -319,6 +322,7 @@ window.confirmRoomDimensions = function() {
   group.roomWallHeight = wallHeight;
   group.roomWidth = width;
   group.roomHeight = height;
+  group.height3D = wallHeight * 10; // تعيين القيمة الافتراضية
 
   canvas.add(group);
   canvas.bringToFront(group);
@@ -341,7 +345,6 @@ window.addSymbol = function(type, name) {
   let mepCategory = 'general';
   let loadA = 0.5;
 
-  // --- رموز الكهرباء والطاقة الموسعة ---
   if (type.includes('switch') || displayName.includes('مفتاح')) {
     mepCategory = 'electrical';
     const c = new fabric.Circle({ radius: 12, fill: 'transparent', stroke: '#f5b813', strokeWidth: 2, originX: 'center', originY: 'center' });
@@ -377,10 +380,7 @@ window.addSymbol = function(type, name) {
     const c = new fabric.Circle({ radius: 20, fill: 'rgba(245, 184, 19, 0.2)', stroke: '#f5b813', strokeWidth: 2, originX: 'center', originY: 'center' });
     const t = new fabric.Text('G', { fontSize: 16, fontWeight: 'bold', fill: '#f5b813', originX: 'center', originY: 'center' });
     shapes.push(c, t);
-  } 
-
-  // --- رموز السباكة والميكانيكا الموسعة ---
-  else if (type.includes('water_pump') || displayName.includes('مضخة')) {
+  } else if (type.includes('water_pump') || displayName.includes('مضخة')) {
     mepCategory = 'plumbing';
     const c = new fabric.Circle({ radius: 16, fill: 'transparent', stroke: '#0284c7', strokeWidth: 2, originX: 'center', originY: 'center' });
     const p = new fabric.Path('M -8 8 L 0 -10 L 8 8 Z', { fill: '#0284c7', originX: 'center', originY: 'center' });
@@ -400,10 +400,7 @@ window.addSymbol = function(type, name) {
     const outer = new fabric.Rect({ width: 36, height: 36, fill: 'rgba(2, 132, 199, 0.2)', stroke: '#0284c7', strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
     const inner = new fabric.Circle({ radius: 10, fill: 'transparent', stroke: '#0284c7', strokeWidth: 2, originX: 'center', originY: 'center' });
     shapes.push(outer, inner);
-  } 
-
-  // --- رموز النجارة والمعمار الموسعة ---
-  else if (type.includes('sliding_door') || displayName.includes('باب سحاب')) {
+  } else if (type.includes('sliding_door') || displayName.includes('باب سحاب')) {
     mepCategory = 'carpentry';
     const frame = new fabric.Rect({ width: 100, height: 10, fill: 'transparent', stroke: '#ff4757', strokeWidth: 1, originX: 'center', originY: 'center' });
     const d1 = new fabric.Line([-50, -2, 0, -2], { stroke: '#ff4757', strokeWidth: 3 });
@@ -489,6 +486,7 @@ window.addSymbol = function(type, name) {
   group.flowActive = false;
   group.loadCurrent = loadA;
   group.isPanel = displayName.includes('لوحة');
+  group.height3D = 2800; // [إصلاح الخطأ 3]: تعيين الارتفاع ثلاثي الأبعاد الافتراضي لتجنب أي أخطاء حسابية
 
   canvas.add(group);
   canvas.bringToFront(group);
@@ -814,7 +812,6 @@ window.startDrawingLine = function(lineType) {
 };
 
 // --- 9. BIM 3D Engine & Dynamic Wall Cutouts & Interactive Simulation ---
-
 function createWallWithOpenings(wallWidth, wallHeight, wallThickness, connectedItems) {
   const wallGroup = new THREE.Group();
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, transparent: true, opacity: 0.85 });
@@ -1392,7 +1389,7 @@ function saveCanvasState() {
   EngineState.historyStack.push(JSON.stringify(canvas.toJSON([
     'mepType', 'mepName', 'nameTag', 'symbolType', 'roomWallHeight', 
     'roomWidth', 'roomHeight', 'isLine', 'lineLengthMm', 'doorWidth', 
-    'isOn', 'isOpen', 'flowActive', 'loadCurrent', 'isPanel'
+    'isOn', 'isOpen', 'flowActive', 'loadCurrent', 'isPanel', 'height3D'
   ])));
 }
 
@@ -1448,7 +1445,6 @@ window.calculateVoltageDropBridge = function(current, length, resistance, voltag
     return Module._calculate_voltage_drop(current, length, resistance, voltage);
   }
 
-  console.warn("⚠️ محرك C++ غير جاهز بعد، تم استخدام الحساب الاحتياطي بـ JS.");
   if (voltage <= 0) return 0;
   return ((2 * current * length * (resistance / 1000)) / voltage) * 100;
 };
@@ -1465,11 +1461,12 @@ function createFloatingActionBar() {
         <button class="obj-btn obj-btn-clone" title="نسخ العنصر" onclick="cloneSelectedObject()">C</button>
         <button class="obj-btn obj-btn-resize" title="تغيير الأبعاد" onclick="openObjectDimModal()">T</button>
     `;
-    document.querySelector('.canvas-container-wrapper').appendChild(actionBarElem);
+    const wrapper = document.querySelector('.canvas-container-wrapper') || document.body;
+    wrapper.appendChild(actionBarElem);
 }
 
 function updateActionBarPosition() {
-    if (!currentSelectedObject || !canvas) {
+    if (!currentSelectedObject || !canvas || !actionBarElem) {
         if (actionBarElem) actionBarElem.classList.add('hidden');
         return;
     }
@@ -1483,25 +1480,29 @@ function updateActionBarPosition() {
     actionBarElem.classList.remove('hidden');
 }
 
-canvas.on('selection:created', (e) => {
-    currentSelectedObject = e.selected[0];
+// ربط أحداث الـ Canvas ضمن دالة مستقلة يتم استدعاؤها بعد إنشاء الكائن
+function setupCanvasRuntimeEvents() {
     createFloatingActionBar();
-    updateActionBarPosition();
-});
 
-canvas.on('selection:updated', (e) => {
-    currentSelectedObject = e.selected[0];
-    updateActionBarPosition();
-});
+    canvas.on('selection:created', (e) => {
+        currentSelectedObject = e.selected[0];
+        updateActionBarPosition();
+    });
 
-canvas.on('selection:cleared', () => {
-    currentSelectedObject = null;
-    if (actionBarElem) actionBarElem.classList.add('hidden');
-});
+    canvas.on('selection:updated', (e) => {
+        currentSelectedObject = e.selected[0];
+        updateActionBarPosition();
+    });
 
-canvas.on('object:moving', updateActionBarPosition);
-canvas.on('object:scaling', updateActionBarPosition);
-canvas.on('object:rotating', updateActionBarPosition);
+    canvas.on('selection:cleared', () => {
+        currentSelectedObject = null;
+        if (actionBarElem) actionBarElem.classList.add('hidden');
+    });
+
+    canvas.on('object:moving', updateActionBarPosition);
+    canvas.on('object:scaling', updateActionBarPosition);
+    canvas.on('object:rotating', updateActionBarPosition);
+}
 
 window.deleteSelectedObject = function() {
     if (!currentSelectedObject) return;
@@ -1525,7 +1526,8 @@ window.cloneSelectedObject = function() {
         if (cloned.type === 'activeSelection') {
             cloned.canvas = canvas;
             cloned.forEachObject((obj) => canvas.add(obj));
-            cloned.setCoordinates();
+            // [إصلاح الخطأ 2]: تم تعديل setCoordinates إلى setCoords الصحيحة في Fabric.js
+            cloned.setCoords();
         } else {
             canvas.add(cloned);
         }
@@ -1539,6 +1541,8 @@ window.openObjectDimModal = function() {
     if (!currentSelectedObject) return;
     
     const modal = document.getElementById('objectDimensionModal');
+    if (!modal) return;
+    
     const nameLabel = document.getElementById('targetObjectName');
     const inputW = document.getElementById('objWidthInput');
     const inputH = document.getElementById('objHeightInput');
@@ -1548,24 +1552,29 @@ window.openObjectDimModal = function() {
     const currentH = Math.round(currentSelectedObject.height * currentSelectedObject.scaleY);
     const currentZ = currentSelectedObject.height3D || 2800; 
 
-    nameLabel.innerText = currentSelectedObject.label || currentSelectedObject.type || 'عنصر';
-    inputW.value = currentW;
-    inputH.value = currentH;
-    inputZ.value = currentZ;
+    if (nameLabel) nameLabel.innerText = currentSelectedObject.nameTag || currentSelectedObject.mepName || 'عنصر';
+    if (inputW) inputW.value = currentW;
+    if (inputH) inputH.value = currentH;
+    if (inputZ) inputZ.value = currentZ;
 
     modal.classList.remove('hidden');
 };
 
 window.closeObjectDimModal = function() {
-    document.getElementById('objectDimensionModal').classList.add('hidden');
+    const modal = document.getElementById('objectDimensionModal');
+    if (modal) modal.classList.add('hidden');
 };
 
 window.applyObjectDimensions = function() {
     if (!currentSelectedObject) return;
 
-    const newW = parseFloat(document.getElementById('objWidthInput').value);
-    const newH = parseFloat(document.getElementById('objHeightInput').value);
-    const newZ = parseFloat(document.getElementById('objDepthInput').value);
+    const inputW = document.getElementById('objWidthInput');
+    const inputH = document.getElementById('objHeightInput');
+    const inputZ = document.getElementById('objDepthInput');
+
+    const newW = parseFloat(inputW ? inputW.value : currentSelectedObject.width);
+    const newH = parseFloat(inputH ? inputH.value : currentSelectedObject.height);
+    const newZ = parseFloat(inputZ ? inputZ.value : 2800);
 
     if (newW > 0 && newH > 0) {
         currentSelectedObject.set({
@@ -1574,7 +1583,8 @@ window.applyObjectDimensions = function() {
             height3D: newZ 
         });
 
-        currentSelectedObject.setCoordinates();
+        // [إصلاح الخطأ 2]: تم استبدال setCoordinates بـ setCoords
+        currentSelectedObject.setCoords();
         canvas.requestRenderAll();
         updateActionBarPosition();
     }
