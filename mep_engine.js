@@ -8,8 +8,8 @@ class MEPEngineMaster {
     this.elements = []; // تخزين كافة العناصر الهندسية (جدران، كهرباء، سباكة، أثاث، لوحات)
     this.gridSize = 24;
     this.snapEnabled = true;
-    this.totalLoad = 0;       // أمبير أو كيلوواط كلي
-    this.totalPressure = 0;   // ضغط السباكة الكلي (Bar)
+    this.totalLoad =       0; // أمبير أو كيلوواط كلي
+    this.totalPressure =   0; // ضغط السباكة الكلي (Bar)
     this.circuits = [];
     this.loadFromLocalStorage();
   }
@@ -70,24 +70,20 @@ class MEPEngineMaster {
   validateSystem() {
     const errors = [];
     
-    // فحص اللوحات الكهربائية
     const panels = this.elements.filter(el => el.type === 'panel');
     if (panels.length === 0 && this.elements.some(el => el.type === 'electrical')) {
       errors.push({ type: 'warning', message: 'تنبيه: يوجد عناصر كهربائية بدون لوحة توزيع رئيسية (Panel) مرتبطة.' });
     }
 
-    // فحص الأحمال الزائدة
     if (this.totalLoad > 100) {
       errors.push({ type: 'danger', message: 'خطر: الحمل الكهربائي الكلي متجاوز الحد الآمن (> 100A).' });
     }
 
-    // فحص عناصر السباكة
     const plumbingItems = this.elements.filter(el => el.type === 'plumbing');
     if (plumbingItems.length > 0 && this.totalPressure === 0) {
       errors.push({ type: 'warning', message: 'تنبيه: شبكة السباكة غير متصلة بمصدر ضغط مياه رئيسي.' });
     }
 
-    // إضافة فحص التعارضات الهندسية
     const clashes = this.checkClashes();
     clashes.forEach(cl => {
       errors.push({ type: 'danger', message: `تعارض هندسي: ${cl.elementA} متداخل مع ${cl.elementB}` });
@@ -103,7 +99,6 @@ class MEPEngineMaster {
         const el1 = this.elements[i];
         const el2 = this.elements[j];
         
-        // التحقق من تداخل الإحداثيات بين فئات مختلفة (مثل كهرباء وسباكة)
         if (el1.category !== el2.category && this.isIntersecting(el1, el2)) {
           clashesFound.push({
             elementA: el1.label || el1.subType,
@@ -133,8 +128,8 @@ class MEPEngineMaster {
   // 3. الحسابات الهندسية المتقدمة (Cable Sizing & BOQ & MCB)
   // -------------------------------------------------------------------------
   calculateCableSize(currentAmps, lengthMeters, voltage = 220, isThreePhase = false) {
-    const allowableDrop = voltage * 0.03; // السماح بـ 3% هبوط أقصى
-    const rho = 0.0175; // مقاومة النحاس
+    const allowableDrop = voltage * 0.03;
+    const rho = 0.0175;
     
     let recommendedSection = 2.5; 
     if (currentAmps > 16 && currentAmps <= 25) recommendedSection = 4.0;
@@ -223,5 +218,4 @@ class MEPEngineMaster {
   }
 }
 
-// تصنيف المحرك العام ليتم استدعاؤه في واجهة التطبيق
 window.mepEngine = new MEPEngineMaster();
