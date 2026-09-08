@@ -32,7 +32,7 @@
   --grid-line-color: rgba(255, 255, 255, 0.15);
 }
 
-/* الوضع 1: البار العلوي أبيض والنزأزرار ملونة والقائمة الجانبية بيضاء */
+/* الوضع 1: البار العلوي أبيض والأزرار ملونة والقائمة الجانبية بيضاء */
 body.theme-light {
   --bg-gradient: none;
   --bg-main: #f1f5f9;
@@ -211,7 +211,7 @@ body, html {
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
 }
 
-/* الترتيب الجديد لمحتوى الأزرار بالبار العلوي: 3D, 2D, صورة, تقرير, تراجع, لاحق */
+/* ترتيب محتوى الأزرار بالبار العلوي: 3D, 2D, صورة, تقرير, تراجع, لاحق */
 .top-bar-actions {
   display: flex;
   align-items: center;
@@ -870,7 +870,50 @@ body, html {
 }
 
 /* ==========================================================================
-   12. تجاوب الشاشات الصغيرة (Responsive Mobile Styles)
+   12. أزرار التحكم السريعة للعنصر المحدد (Object Action Bar)
+   ========================================================================== */
+.object-action-bar {
+  position: absolute;
+  display: flex;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(0, 242, 254, 0.6);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 10000;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -120%);
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
+}
+
+.obj-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.obj-btn:hover {
+  background: var(--primary-color);
+  color: #000;
+}
+
+.obj-btn-delete:hover { background: #ef4444 !important; color: #fff !important; }
+.obj-btn-clone:hover { background: #3b82f6 !important; color: #fff !important; }
+.obj-btn-resize:hover { background: #f5b813 !important; color: #000 !important; }
+
+/* ==========================================================================
+   13. تجاوب الشاشات الصغيرة (Responsive Mobile Styles)
    ========================================================================== */
 @media screen and (max-width: 850px) {
   .top-bar {
@@ -915,39 +958,4 @@ body, html {
   .status-grid-cell:nth-child(n+5) {
     display: none;
   }
-
-/* أزرار التحكم السريعة الخاصة بالعنصر المحدد */
-.object-action-bar {
-    position: absolute;
-    display: flex;
-    gap: 4px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(0, 242, 254, 0.5);
-    border-radius: 6px;
-    padding: 3px;
-    z-index: 10000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    transform: translate(-50%, -100%);
-    pointer-events: auto;
-}
-
-.obj-btn {
-    border: none;
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    width: 26px;
-    height: 26px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.obj-btn-delete:hover { background: #ef4444; color: #fff; }
-.obj-btn-clone:hover { background: #3b82f6; color: #fff; }
-.obj-btn-resize:hover { background: #f5b813; color: #000; }
 }
