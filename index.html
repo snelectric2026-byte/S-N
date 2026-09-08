@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>S⚡N Electric MEP Engine v3.5 - المولد المعماري والمحاكاة الذكية</title>
 
-    <!-- ربط المانفيست والخطوط -->
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
 
-    <!-- CSS الشاشة الافتتاحية والأنماط الهيكلية -->
     <style>
         :root {
             --bg-topbar: rgba(15, 23, 42, 0.85);
@@ -35,7 +33,9 @@
             --bg-sidebar: #0a0a0a;
         }
 
-        /* الشاشة الافتتاحية المعدلة (7 ثواني عرض + 3 ثواني تداخل سلس) */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Cairo', sans-serif; background: #0b0f19; color: #ffffff; overflow: hidden; }
+
         #splash-screen {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -54,29 +54,17 @@
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
             position: relative; overflow: hidden;
-        }
-
-        .glass-card::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
-            transform: skewX(-25deg); animation: shine 5s infinite;
-        }
-
-        @keyframes shine {
-            0% { left: -100%; }
-            20% { left: 200%; }
-            100% { left: 200%; }
         }
 
         .svg-container { width: 260px; height: 130px; overflow: visible; }
         .svg-text { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 110px; }
 
-        /* تعديلات ألوان الشاشة الافتتاحية بدقة */
-        .part-s { fill: #ff3344; opacity: 0; transform-origin: 50px 70px; animation: pulseIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 0.3s; filter: drop-shadow(0 0 10px rgba(255, 51, 68, 0.7)); }
-        .part-bolt { fill: #f5b813; opacity: 0; transform-origin: 130px 65px; animation: pulseIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 1.2s; filter: drop-shadow(0 0 15px rgba(245, 184, 19, 0.9)); }
-        .part-n { fill: #0088ff; opacity: 0; transform-origin: 200px 70px; animation: pulseIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 2.1s; filter: drop-shadow(0 0 10px rgba(0, 136, 255, 0.7)); }
+        /* تلوين الحرف بنفس لونه الصافي دون أي ظلال خارجية معارضة */
+        .part-s { fill: #ff3344; opacity: 0; transform-origin: 50px 70px; animation: pulseIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 0.3s; }
+        .part-bolt { fill: #f5b813; opacity: 0; transform-origin: 130px 65px; animation: pulseIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 1.2s; }
+        .part-n { fill: #0088ff; opacity: 0; transform-origin: 200px 70px; animation: pulseIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 2.1s; }
 
         @keyframes pulseIn {
             0% { opacity: 0; transform: scale(0.1); }
@@ -88,22 +76,23 @@
         .brand-title { font-size: 26px; font-weight: 900; letter-spacing: 2px; display: flex; align-items: center; gap: 8px; }
         
         .sn-part { display: flex; gap: 4px; opacity: 0; animation: fadeInCustom 0.8s ease-out forwards; animation-delay: 3.0s; }
-        .sn-part .s-letter { color: #ff3344; text-shadow: 0 0 8px rgba(255,51,68,0.5); }
-        .sn-part .n-letter { color: #0088ff; text-shadow: 0 0 8px rgba(0,136,255,0.5); }
+        .sn-part .s-letter { color: #ff3344; }
+        .sn-part .n-letter { color: #0088ff; }
 
         .electric-part span {
             display: inline-block; opacity: 0; transform-origin: center;
-            animation: letterPulse 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, colorShift 0.3s linear infinite alternate;
+            animation: letterPulse 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            color: #ffffff;
         }
 
-        .electric-part span:nth-child(1) { animation-delay: 3.3s, 0.00s; }
-        .electric-part span:nth-child(2) { animation-delay: 3.4s, 0.05s; }
-        .electric-part span:nth-child(3) { animation-delay: 3.5s, 0.10s; }
-        .electric-part span:nth-child(4) { animation-delay: 3.6s, 0.15s; }
-        .electric-part span:nth-child(5) { animation-delay: 3.7s, 0.20s; }
-        .electric-part span:nth-child(6) { animation-delay: 3.8s, 0.25s; }
-        .electric-part span:nth-child(7) { animation-delay: 3.9s, 0.30s; }
-        .electric-part span:nth-child(8) { animation-delay: 4.0s, 0.35s; }
+        .electric-part span:nth-child(1) { animation-delay: 3.3s; }
+        .electric-part span:nth-child(2) { animation-delay: 3.4s; }
+        .electric-part span:nth-child(3) { animation-delay: 3.5s; }
+        .electric-part span:nth-child(4) { animation-delay: 3.6s; }
+        .electric-part span:nth-child(5) { animation-delay: 3.7s; }
+        .electric-part span:nth-child(6) { animation-delay: 3.8s; }
+        .electric-part span:nth-child(7) { animation-delay: 3.9s; }
+        .electric-part span:nth-child(8) { animation-delay: 4.0s; }
 
         @keyframes letterPulse {
             0% { opacity: 0; transform: scale(0.2); }
@@ -111,76 +100,56 @@
             100% { opacity: 1; transform: scale(1); }
         }
 
-        @keyframes colorShift {
-            0% { color: #ff3344; }
-            33% { color: #00aaff; }
-            66% { color: #ffcc00; }
-            100% { color: #00e676; }
-        }
-
         .line-divider { width: 90%; height: 2px; background: linear-gradient(90deg, transparent, #f5b813, transparent); margin: 10px 0; opacity: 0; animation: fadeInCustom 0.6s ease-out forwards; animation-delay: 4.5s; }
         .tagline { font-size: 11px; font-weight: 800; color: #f5b813; letter-spacing: 4px; opacity: 0; animation: fadeInCustom 0.6s ease-out forwards; animation-delay: 5.0s; }
         
         @keyframes fadeInCustom { to { opacity: 1; } }
-
         .splash-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-        .hidden { display: none !important; }
 
-        /* تصميم الشريط السفلي المكون من 7 مربعات */
+        /* الشريط الجانبي وتأثير السحب والانزلاق */
+        .sidebar {
+            position: fixed; right: 0; top: 52px; width: 280px; height: calc(100vh - 100px);
+            background: var(--bg-sidebar); z-index: 2000;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(0);
+            border-left: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar.collapsed {
+            transform: translateX(100%);
+        }
+
+        .glass-btn {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+            transition: all 0.2s;
+        }
+        .glass-btn:hover { background: rgba(0,242,254,0.2); border-color: #00f2fe; }
+
         .bottom-console-grid {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 48px;
+            position: fixed; bottom: 0; left: 0; right: 0; height: 48px;
             background: rgba(10, 15, 26, 0.95);
             border-top: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-            padding: 3px 6px;
-            font-family: 'Cairo', sans-serif;
+            z-index: 1000; display: grid; grid-template-columns: repeat(7, 1fr);
+            gap: 4px; padding: 3px 6px; font-family: 'Cairo', sans-serif;
         }
-
         .console-box {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 2px 4px;
-            cursor: pointer;
-            user-select: none;
-            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; padding: 2px 4px; cursor: pointer; user-select: none;
         }
-
-        .console-box:hover {
-            background: rgba(0, 242, 254, 0.12);
-            border-color: #00f2fe;
-        }
-
-        .console-box .box-title { font-size: 9px; color: #94a3b8; margin-bottom: 1px; white-space: nowrap; }
-        .console-box .box-value { font-size: 11px; font-weight: bold; color: #00f2fe; white-space: nowrap; }
+        .console-box .box-title { font-size: 9px; color: #94a3b8; margin-bottom: 1px; }
+        .console-box .box-value { font-size: 11px; font-weight: bold; color: #00f2fe; }
         .console-box.active-snap { background: rgba(34, 197, 94, 0.15); border-color: #22c55e; }
-        .console-box.active-snap .box-value { color: #22c55e; }
-
-        body.theme-light .sidebar { background: var(--bg-sidebar); color: #000000; }
-        body.theme-dark .sidebar { background: var(--bg-sidebar); color: #ffffff; }
     </style>
 
-    <!-- المكتبات الخارجية -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
     <link rel="stylesheet" href="style.css">
-    <meta name="theme-color" content="#020617">
 </head>
 <body class="theme-default">
 
-    <!-- الشاشة الافتتاحية المحدثة (7 ثوانٍ عرض + 3 ثوانٍ تلاشي) -->
+    <!-- الشاشة الافتتاحية -->
     <div id="splash-screen">
         <div class="glass-card">
             <svg class="svg-container" viewBox="0 0 260 130">
@@ -203,132 +172,51 @@
         </div>
     </div>
 
-    <!-- مدخل قراءة ملفات JSON -->
-    <input type="file" id="fileInputJSON" accept=".json" style="display: none;" />
-
-    <!-- الشريط العلوي الرئيسي -->
-    <header class="top-bar" style="background: var(--bg-topbar); color: var(--text-topbar);">
-        <div class="brand">
-            <button type="button" class="glass-btn" onclick="window.toggleSidebar()" style="padding: 4px 10px; font-size: 16px;">☰</button>
-            <span class="logo-sn" style="color: #ff3344;">S</span><span class="logo-bolt">⚡</span><span class="logo-sn" style="color: #0088ff;">N</span>
-            <span style="font-size:12px; color:#f5b813; margin-right: 6px; font-weight: bold;">MEP v3.5</span>
+    <!-- الشريط العلوي -->
+    <header class="top-bar" style="background: var(--bg-topbar); color: var(--text-topbar); position: relative; z-index: 1500; display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; height: 52px;">
+        <div class="brand" style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" id="sidebarToggleBtn" class="glass-btn" style="padding: 4px 10px; font-size: 16px;">☰</button>
+            <span class="logo-sn" style="color: #ff3344; font-weight:900;">S</span><span class="logo-bolt">⚡</span><span class="logo-sn" style="color: #0088ff; font-weight:900;">N</span>
+            <span style="font-size:12px; color:#f5b813; font-weight: bold;">MEP v3.5</span>
         </div>
 
         <div class="top-actions" style="display: flex; gap: 6px;">
-            <button type="button" id="btnView3D" class="glass-btn" onclick="window.toggle3DView()" title="عرض 3D">🧊 3D</button>
-            <button type="button" id="btnView2D" class="glass-btn active" onclick="window.toggle2DView()" title="عرض 2D">📐 2D</button>
-            <button type="button" id="btnSave" class="glass-btn" onclick="window.exportPNG()" title="تصدير صورة">🖼️ صورة</button>
-            <button type="button" class="glass-btn" onclick="window.exportTXTReport()" title="تصدير تقرير نصي">📄 تقرير</button>
-            <button type="button" id="btnUndo" class="glass-btn" onclick="window.undoLastAction()" title="تراجع">↩️ تراجع</button>
-            <button type="button" id="btnRedo" class="glass-btn" onclick="window.redoLastAction()" title="اللاحق / إعادة">↪️ اللاحق</button>
+            <button type="button" id="btnView3D" class="glass-btn">🧊 3D</button>
+            <button type="button" id="btnView2D" class="glass-btn active">📐 2D</button>
+            <button type="button" id="btnSave" class="glass-btn">🖼️ صورة</button>
+            <button type="button" id="btnUndo" class="glass-btn">↩️ تراجع</button>
+            <button type="button" id="btnRedo" class="glass-btn">↪️ اللاحق</button>
         </div>
     </header>
 
-    <div class="app-layout">
-        <main class="canvas-container-wrapper" style="position: relative; flex: 1; height: calc(100vh - 98px); overflow: hidden;">
+    <div class="app-layout" style="display: flex; height: calc(100vh - 100px);">
+        <main class="canvas-container-wrapper" style="position: relative; flex: 1; height: 100%; overflow: hidden;">
             <div id="canvas2DContainer" style="width: 100%; height: 100%; position: absolute; top:0; left:0;">
                 <canvas id="mepCanvas"></canvas>
             </div>
-            <div id="canvas3DContainer" style="width: 100%; height: 100%; position: absolute; top:0; left:0; display: none; background: #020617;">
-                <div style="position: absolute; top: 15px; right: 15px; z-index: 10; background: rgba(15,23,42,0.8); padding: 8px 12px; border-radius: 8px; color: #00f2fe; border: 1px solid #00f2fe; font-size: 12px; backdrop-filter: blur(4px);">
-                    🖱️ التحكم: اسحب للتدوير | Wheel للتقريب | اضغط على الأبواب واللمبات للتفاعل
-                </div>
-            </div>
         </main>
 
-        <!-- الشريط الجانبي للأدوات والمكتبات -->
-        <aside class="sidebar collapsed" id="sidebarMenu">
-            <div class="sidebar-header">
-                <span>قائمة العناصر والأدوات</span>
-                <button type="button" class="close-btn" onclick="window.toggleSidebar()">✕</button>
+        <!-- الشريط الجانبي -->
+        <aside class="sidebar" id="sidebarMenu">
+            <div class="sidebar-header" style="padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span style="font-weight: bold; color: #00f2fe; font-size: 13px;">قائمة العناصر والأدوات</span>
+                <button type="button" id="sidebarCloseBtn" style="background: none; border: none; color: #fff; font-size: 16px; cursor: pointer;">✕</button>
             </div>
-
-            <div class="sidebar-scroll-content">
-                <!-- إعدادات النمط والشبكة -->
-                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(0,242,254,0.3);">
-                    <div style="font-size: 13px; font-weight: bold; color: #f5b813; margin-bottom: 8px;">⚙️ إعدادات النمط والشبكة</div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 11px; color: #cbd5e1; display: block; margin-bottom: 4px;">وضع التطبيق (الثيم):</label>
-                        <select id="appThemeSelect" onchange="window.changeAppTheme(this.value)" style="width: 100%; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px;">
-                            <option value="default">3- الوضع الافتراضي الحالي</option>
-                            <option value="light">1- بار علوي أبيض وأزرار ملونة وقائمة بيضاء</option>
-                            <option value="dark">2- بار علوي أسود وأزرار بيضاء وقائمة سوداء</option>
-                        </select>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <label style="font-size: 11px; color: #cbd5e1;">لون خطوط الشبكة:</label>
-                        <input type="color" id="gridColorPicker" value="#334155" onchange="window.updateGridColor && window.updateGridColor(this.value)">
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label>المقياس (1px = mm):</label>
-                            <input type="number" id="scaleInput" value="10" min="1" max="100" style="width: 55px; background:#000; color:#fff; border:1px solid #333; text-align:center;" onchange="window.updateScaleSettings && window.updateScaleSettings()">
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label>خطوة الشبكة (mm):</label>
-                            <input type="number" id="gridInput" value="100" min="10" step="10" style="width: 55px; background:#000; color:#fff; border:1px solid #333; text-align:center;" onchange="window.updateScaleSettings && window.updateScaleSettings()">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- تخصيص المسمى -->
-                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-                    <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">تخصيص العنصر / المسمى</div>
-                    <input type="text" id="shapeLabelInput" placeholder="أدخل اسم العنصر..." style="width: 100%; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px; margin-bottom: 6px;">
-                    <label style="font-size: 11px; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" id="hideShapeLabelCheckbox"> إخفاء النص التوضيحي من Canvas
-                    </label>
-                </div>
-
-                <!-- تصنيفات الكتالوج والأدوات -->
-                <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('roomsSec', event)">🏛️ حجر وغرفة ▾</button>
-                    <div class="popup-window" id="roomsSec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'حجرة استقبال')"><span class="icon">🛋️</span> حجرة استقبال</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'غرفة أطفال')"><span class="icon">🧸</span> غرفة أطفال</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'حجرة')"><span class="icon">🛏️</span> حجرة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('architectural', 'طرقة (ممر)')"><span class="icon">🚪</span> طرقة (ممر)</button>
-                        <button type="button" onclick="window.startDrawingWall && window.startDrawingWall()"><span class="icon">🧱</span> جدار</button>
-                    </div>
-                </div>
-
-                <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('carpentrySec', event)">🚪 نجاره ▾</button>
-                    <div class="popup-window" id="carpentrySec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب مفرد يمين')"><span class="icon">🚪</span> باب مفرد يمين</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب مفرد شمال')"><span class="icon">🚪</span> باب مفرد شمال</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'باب جرار')"><span class="icon">↔️</span> باب جرار</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('carpentry', 'شباك مفرد')"><span class="icon">🪟</span> شباك مفرد</button>
-                    </div>
-                </div>
-
-                <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('electricSec', event)">💡 كهرباء ▾</button>
-                    <div class="popup-window" id="electricSec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح إنارة')"><span class="icon">🔘</span> مفتاح إنارة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'لمبة سقف')"><span class="icon">⊗</span> لمبة سقف (تفاعلية)</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'بريزة')"><span class="icon">🔌</span> بريزة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح تكييف')"><span class="icon">❄️</span> مفتاح تكييف (32A)</button>
-                    </div>
-                </div>
-
-                <div class="category-item">
-                    <button type="button" class="category-title-btn" onclick="window.togglePopup('plumbingSec', event)">🚰 سباكه ▾</button>
-                    <div class="popup-window" id="plumbingSec">
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'حوض وش')"><span class="icon">🧴</span> حوض وش</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'قاعدة حمام')"><span class="icon">🚽</span> قاعدة حمام</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'بالوعة')"><span class="icon">🕳️</span> بالوعة</button>
+            <div class="sidebar-scroll-content" style="padding: 15px; overflow-y: auto; height: calc(100% - 50px);">
+                <div class="category-item" style="margin-bottom: 10px;">
+                    <button type="button" class="category-title-btn" data-target="electricSec" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 6px; cursor: pointer; text-align: right; font-size: 12px;">💡 كهرباء ▾</button>
+                    <div class="popup-window" id="electricSec" style="display: none; padding: 5px 0; flex-direction: column; gap: 5px; margin-top: 5px;">
+                        <button type="button" class="symbol-btn" data-type="electrical" data-subtype="مفتاح إنارة" style="padding: 6px; background: #1e293b; color:#fff; border:none; border-radius:4px; cursor:pointer; text-align:right; font-size: 11px;">🔘 مفتاح إنارة</button>
+                        <button type="button" class="symbol-btn" data-type="electrical" data-subtype="بريزة" style="padding: 6px; background: #1e293b; color:#fff; border:none; border-radius:4px; cursor:pointer; text-align:right; font-size: 11px;">🔌 بريزة كهرباء</button>
                     </div>
                 </div>
             </div>
         </aside>
     </div>
 
-    <!-- الشريط السفلي التفاعلي (7 مربعات) -->
+    <!-- الشريط السفلي التفاعلي -->
     <div class="bottom-console-grid">
-        <div class="console-box active-snap" id="boxSnapToggle" onclick="window.toggleSnapInBar()">
+        <div class="console-box active-snap" id="boxSnapToggle">
             <span class="box-title">🧲 الانجذاب</span>
             <span class="box-value" id="valSnapStatus">مفعل 🟢</span>
         </div>
@@ -338,15 +226,15 @@
         </div>
         <div class="console-box">
             <span class="box-title">📏 العرض المحدد</span>
-            <span class="box-value">W: <span id="statW">0</span> mm</span>
+            <span class="box-value"><span id="statW">0</span> mm</span>
         </div>
         <div class="console-box">
             <span class="box-title">📐 الطول المحدد</span>
-            <span class="box-value">H: <span id="statH">0</span> mm</span>
+            <span class="box-value"><span id="statH">0</span> mm</span>
         </div>
         <div class="console-box">
             <span class="box-title">⚡ الحمل الكهربائي</span>
-            <span class="box-value" id="total-load-text" style="color: #f5b813;">0.00 A / 0.0 kW</span>
+            <span class="box-value" id="total-load-text" style="color: #f5b813;">0.0 A</span>
         </div>
         <div class="console-box">
             <span class="box-title">🚰 ضغط السباكة</span>
@@ -358,31 +246,7 @@
         </div>
     </div>
 
-    <!-- دوال الشاشة الافتتاحية والتحكم الأساسية -->
     <script>
-        window.changeAppTheme = function(theme) {
-            document.body.className = '';
-            if (theme === 'light') document.body.classList.add('theme-light');
-            else if (theme === 'dark') document.body.classList.add('theme-dark');
-            else document.body.classList.add('theme-default');
-        };
-
-        let isSnapEnabled = true;
-        window.toggleSnapInBar = function() {
-            isSnapEnabled = !isSnapEnabled;
-            const snapBox = document.getElementById('boxSnapToggle');
-            const snapVal = document.getElementById('valSnapStatus');
-            if (isSnapEnabled) {
-                snapBox.classList.add('active-snap');
-                snapVal.innerHTML = 'مفعل 🟢';
-            } else {
-                snapBox.classList.remove('active-snap');
-                snapVal.innerHTML = 'معطل 🔴';
-            }
-            if (typeof window.toggleSnap === 'function') window.toggleSnap(isSnapEnabled);
-        };
-
-        // إخفاء الشاشة الافتتاحية بعد 7 ثوانٍ مع 3 ثوانٍ تداخل (إجمالي 10 ثوانٍ)
         window.addEventListener('load', () => {
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
