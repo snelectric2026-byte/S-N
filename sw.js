@@ -1,9 +1,10 @@
-const CACHE_NAME = 'sn-ping-store-v0.1';
+const CACHE_NAME = 'sn-electric-mep-v3.5';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './script.js',
+  './mep_engine.js',
   './manifest.json',
   './icon.png',
   './sw.js'
