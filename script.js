@@ -164,8 +164,10 @@
   function onSelect() {
     const o = canvas && canvas.getActiveObject();
     if (!o) return;
-    setText('statW', Math.round(o.getScaledWidth() * scaleMMperPX));
-    setText('statH', Math.round(o.getScaledHeight() * scaleMMperPX));
+    const wReal = (o.width || 0) * (o.scaleX || 1);
+    const hReal = (o.height || 0) * (o.scaleY || 1);
+    setText('statW', Math.round(wReal * scaleMMperPX));
+    setText('statH', Math.round(hReal * scaleMMperPX));
   }
 
   /* ---------------------- القائمة الجانبية والقوائم ---------------------- */
@@ -241,7 +243,7 @@
     return parts;
   }
 
-  /* ---------------------- مولد رموز الأثاث والأجهزة الهندسي المتقدم (مدمج بالكامل) ---------------------- */
+  /* ---------------------- مولد رموز الأثاث والأجهزة الهندسي المتقدم ---------------------- */
   function createFurnitureAndApplianceSymbol(subType, p) {
     const parts = [];
     const w = p.w, h = p.h;
@@ -299,7 +301,6 @@
     return parts;
   }
 
-  /* وظيفة مواءمة الاقتطاع الفوري للباب عند إسقاطه على حدود الغرفة */
   function checkAndCutRoomWall(activeObj) {
     if (!canvas || !activeObj) return;
     if (activeObj.snSubtype !== 'باب' && !activeObj.snSubtype?.includes('باب')) return;
@@ -392,11 +393,14 @@
 
   function syncObjectDataToEngine(obj) {
     if (!obj || !obj.snId || !window.mepEngine) return;
+    const actualWidth = (obj.width || 0) * (obj.scaleX || 1);
+    const actualHeight = (obj.height || 0) * (obj.scaleY || 1);
+    
     window.mepEngine.updateElement(obj.snId, {
       left: obj.left,
       top: obj.top,
-      width: obj.getScaledWidth(),
-      height: obj.getScaledHeight()
+      width: actualWidth,
+      height: actualHeight
     });
     updateBottomStatusBar();
   }
@@ -504,9 +508,11 @@
     const o = canvas && canvas.getActiveObject();
     if (!o) { showToast('اختر عنصراً أولاً'); return; }
     targetObject = o;
+    const wReal = (o.width || 0) * (o.scaleX || 1);
+    const hReal = (o.height || 0) * (o.scaleY || 1);
     setText('targetObjectName', o.snLabel || 'عنصر');
-    setVal('objWidthInput', Math.round(o.getScaledWidth() * scaleMMperPX));
-    setVal('objHeightInput', Math.round(o.getScaledHeight() * scaleMMperPX));
+    setVal('objWidthInput', Math.round(wReal * scaleMMperPX));
+    setVal('objHeightInput', Math.round(hReal * scaleMMperPX));
     const m = document.getElementById('objectDimensionModal');
     if (m) m.classList.remove('hidden');
   }
@@ -728,6 +734,10 @@
   window.showBOQReport = showBOQReport;
 
   function openCableCalculator() {
+    if (!window.mepEngine || typeof window.mepEngine.calculateCableSize !== 'function') {
+      showToast('⚠️ محرك الحسابات غير متصل بعد');
+      return;
+    }
     const a = prompt('أدخل التيار (أمبير):', '16'); if (!a) return;
     const l = prompt('أدخل طول الخط (متر):', '20'); if (!l) return;
     const r = window.mepEngine.calculateCableSize(parseFloat(a), parseFloat(l));
