@@ -958,19 +958,4 @@ body, html {
   .status-grid-cell:nth-child(n+5) {
     display: none;
   }
-   /* تثبيت وضبط ظهور القائمة الجانبية وعناصرها بشكل متناسق */
-.sidebar-menu, #sidebarMenu {
-  display: flex !important;
-  flex-direction: column !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* ضمان ظهور الأيقونات والفئات داخل القائمة الجانبية بلا إخفاء مفاجئ */
-.sidebar-menu .category-item, 
-.sidebar-menu .popup-window {
-  display: flex !important;
-  visibility: visible !important;
-}
-
-}
+                           }
