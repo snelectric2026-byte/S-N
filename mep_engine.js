@@ -1,6 +1,6 @@
 /* ==========================================================================
-   SNelectric MEP & BIM Master Engine (mep_engine.js) - v3.7 FIXED
-   Unified Core & Advanced Engineering Logic with Wall Intersect & Auto-Cut
+   SNelectric MEP & BIM Master Engine (mep_engine.js) - v3.9 MERGED MASTER
+   Unified Core, Clash Detection, Cable Sizing, MCB, Wall Cut, Duplicate & 3D Sync
    ========================================================================== */
 
 class MEPEngineMaster {
@@ -8,27 +8,28 @@ class MEPEngineMaster {
     this.elements = []; // تخزين كافة العناصر الهندسية (جدران، كهرباء، سباكة، أثاث، لوحات)
     this.gridSize = 24;
     this.snapEnabled = true;
-    this.totalLoad =       0; // أمبير أو كيلوواط كلي
-    this.totalPressure =   0; // ضغط السباكة الكلي (Bar)
+    this.totalLoad = 0;       // أمبير أو كيلوواط كلي
+    this.totalPressure = 0;   // ضغط السباكة الكلي (Bar)
     this.circuits = [];
     this.loadFromLocalStorage();
   }
 
   // -------------------------------------------------------------------------
-  // 1. إدارة العناصر الأساسية (Elements Management)
+  // 1. إدارة العناصر الأساسية (Elements Management & Duplicate)
   // -------------------------------------------------------------------------
   addElement(type, subType, x, y, properties = {}) {
     const element = {
-      id: 'elem_' + Date.now() + Math.random().toString(36).substring(2, 9),
-      type: type,         // wall, electrical, plumbing, furniture, panel, door, window
+      id: properties.id || ('elem_' + Date.now() + Math.random().toString(36).substring(2, 9)),
+      type: type,         // wall, electrical, plumbing, furniture, panel, door, window, carpentry, architectural
       subType: subType,   // socket, pipe, desk, main_breaker, etc.
       label: properties.label || subType,
       x: this.snapEnabled ? Math.round(x / this.gridSize) * this.gridSize : x,
       y: this.snapEnabled ? Math.round(y / this.gridSize) * this.gridSize : y,
-      left: x,
-      top: y,
+      left: properties.left !== undefined ? properties.left : x,
+      top: properties.top !== undefined ? properties.top : y,
       width: properties.width || 50,
       height: properties.height || 50,
+      wallHeight: properties.wallHeight || 280, // الارتفاع الرأسي ثلاثي الأبعاد (3D Sync)
       rotation: properties.rotation || 0,
       load: properties.load || 0,          // الحمل الكهربائي
       pressure: properties.pressure || 0,  // ضغط السباكة
@@ -47,6 +48,21 @@ class MEPEngineMaster {
     return element;
   }
 
+  duplicateElement(id) {
+    const target = this.elements.find(el => el.id === id);
+    if (!target) return null;
+    const newProps = {
+      ...target,
+      id: undefined,
+      left: (target.left || target.x) + 30,
+      top: (target.top || target.y) + 30,
+      x: (target.x || 0) + 30,
+      y: (target.y || 0) + 30,
+      label: target.label + ' (نسخة)'
+    };
+    return this.addElement(target.type, target.subType, newProps.x, newProps.y, newProps);
+  }
+
   processWallSnapAndCut(element) {
     const walls = this.elements.filter(el => el.type === 'wall');
     if (walls.length === 0) return;
@@ -55,24 +71,20 @@ class MEPEngineMaster {
     let minDistance = Infinity;
 
     walls.forEach(wall => {
-      // حساب المسافة الأقرب بين العنصر وخط الجدار لعمل التثبيت والقص الآلي
       const wx1 = wall.left || wall.x;
       const wy1 = wall.top || wall.y;
       const wx2 = wx1 + (wall.width || 0);
       const wy2 = wy1 + (wall.height || 0);
 
-      // مسافة تقريبية للمنتصف
-      const dist = Math.hypot(element.x - (wx1 + wx2)/2, element.y - (wy1 + wy2)/2);
+      const dist = Math.hypot(element.x - (wx1 + wx2) / 2, element.y - (wy1 + wy2) / 2);
       if (dist < minDistance) {
         minDistance = dist;
         nearestWall = wall;
       }
     });
 
-    // إذا كان العنصر قريباً من الجدار، يتم مغنطته على مساره وخصم مساحة الفتحة
-    if (nearestWall && minDistance < 100) {
+    if (nearestWall && minDistance < 120) {
       element.snappedWallId = nearestWall.id;
-      // تسجيل عملية القطع الهندسي في السجل الداخلي
       element.isWallCut = true;
     }
   }
@@ -139,7 +151,6 @@ class MEPEngineMaster {
         const el1 = this.elements[i];
         const el2 = this.elements[j];
         
-        // استثناء الأبواب والنوافذ إذا كانت مقاطعة للجدران عمداً
         if ((el1.isWallCut && el2.type === 'wall') || (el2.isWallCut && el1.type === 'wall')) {
           continue;
         }
@@ -170,7 +181,7 @@ class MEPEngineMaster {
   }
 
   // -------------------------------------------------------------------------
-  // 3. الحسابات الهندسية المتقدمة (Cable Sizing & BOQ & MCB)
+  // 3. الحسابات الهندسية المتقدمة وجداول الكميات (Cable Sizing, BOQ & MCB)
   // -------------------------------------------------------------------------
   calculateCableSize(currentAmps, lengthMeters, voltage = 220, isThreePhase = false) {
     const allowableDrop = voltage * 0.03;
