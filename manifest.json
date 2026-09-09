@@ -1,22 +1,135 @@
-{
-  "name": "SNelectric MEP Engine",
-  "short_name": "SNelectric",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#00f2fe",
-  "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+/* ==========================================================================
+   SNelectric MEP Engine - Core Calculation & State Engine (mep_engine.js)
+   ========================================================================== */
+
+(function (global) {
+  'use strict';
+
+  class MEPEngine {
+    constructor() {
+      this.elements = [];
+      this.totalLoad = 0;
+      this.totalPressure = 0;
+      this.snapEnabled = true;
+      this.loadFromLocalStorage();
     }
-  ]
-}
+
+    addElement(type, subType, x, y, options = {}) {
+      const element = {
+        id: 'el_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        type: type,
+        subType: subType,
+        x: x,
+        y: y,
+        width: options.width || 40,
+        height: options.height || 40,
+        label: options.label || subType,
+        load: options.load || this.getDefaultLoad(type, subType),
+        pressure: options.pressure || this.getDefaultPressure(type, subType),
+        wallHeight: options.wallHeight || 280,
+        customData: options.customData || {}
+      };
+
+      this.elements.push(element);
+      this.recalculateTotals();
+      this.saveToLocalStorage();
+      return element;
+    }
+
+    removeElement(id) {
+      this.elements = this.elements.filter(el => el.id !== id);
+      this.recalculateTotals();
+      this.saveToLocalStorage();
+    }
+
+    getDefaultLoad(type, subType) {
+      if (type === 'electrical' || type === 'power') return 16; // أمبير افتراضي
+      if (type === 'ac') return 25;
+      return 0;
+    }
+
+    getDefaultPressure(type, subType) {
+      if (type === 'plumbing') return 2.5; // بار افتراضي
+      return 0;
+    }
+
+    recalculateTotals() {
+      this.totalLoad = this.elements.reduce((sum, el) => sum + (el.load || 0), 0);
+      this.totalPressure = this.elements.reduce((sum, el) => sum + (el.pressure || 0), 0);
+    }
+
+    generateBOQ() {
+      const boq = {};
+      this.elements.forEach(el => {
+        const key = (el.type || 'عنصر') + ' : ' + (el.subType || el.label || 'عام');
+        boq[key] = (boq[key] || 0) + 1;
+      });
+      return boq;
+    }
+
+    validateSystem() {
+      const errors = [];
+      // فحص وجود لوحة كهربائية رئيسية
+      const hasDB = this.elements.some(el => (el.subType || '').includes('لوحة') || (el.subType || '').includes('panel'));
+      if (!hasDB && this.elements.length > 3) {
+        errors.push({ type: 'electrical', message: 'المخطط يحتوي على أحمال كهربائية لكنه يخلو من لوحة توزيع رئيسية (DB).' });
+      }
+
+      // فحص تدفق السباكة
+      const plumbingCount = this.elements.filter(el => el.type === 'plumbing').length;
+      if (plumbingCount > 0) {
+        const hasWaterSource = this.elements.some(el => (el.subType || '').includes('صاعد') || (el.subType || '').includes('مغذي'));
+        if (!hasWaterSource) {
+          errors.push({ type: 'plumbing', message: 'يوجد عناصر صحية لكن لا يوجد مصدر تغريد رئيسي (صاعد مياه) معرف بالمخطط.' });
+        }
+      }
+
+      return errors;
+    }
+
+    calculateCableSize(amps, lengthMeters) {
+      // قاعدة تجريبية هندسية لتقدير مقطع الكابل النحاسي المناسب
+      let section = 2.5;
+      if (amps > 16 && amps <= 25) section = 4;
+      else if (amps > 25 && amps <= 32) section = 6;
+      else if (amps > 32 && amps <= 50) section = 10;
+      else if (amps > 50) section = 16;
+
+      const voltageDrop = ((2 * lengthMeters * amps * 0.0175) / (section * 220)).toFixed(2);
+      return {
+        amps: amps,
+        length: lengthMeters,
+        sectionMM2: section,
+        voltageDropVolts: voltageDrop,
+        evaluation: voltageDrop < 3 ? 'مقبول هندسياً (ضمن الحدود المسموح بها)' : 'تحذير: هبوط الجهد مرتفع، يفضل زيادة مقطع الكابل'
+      };
+    }
+
+    saveToLocalStorage() {
+      try {
+        localStorage.setItem('snelectric_mep_state', JSON.stringify({
+          elements: this.elements,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.error('فشل الحفظ المحلي:', e);
+      }
+    }
+
+    loadFromLocalStorage() {
+      try {
+        const data = localStorage.getItem('snelectric_mep_state');
+        if (data) {
+          const parsed = JSON.parse(data);
+          this.elements = parsed.elements || [];
+          this.recalculateTotals();
+        }
+      } catch (e) {
+        console.error('فشل استرجاع البيانات:', e);
+      }
+    }
+  }
+
+  global.mepEngine = new MEPEngine();
+
+})(window);
