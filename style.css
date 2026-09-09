@@ -873,18 +873,18 @@ body, html {
    12. أزرار التحكم السريعة للعنصر المحدد (Object Action Bar)
    ========================================================================== */
 .object-action-bar {
-  position: absolute;
-  display: flex;
-  gap: 4px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(0, 242, 254, 0.6);
-  border-radius: 8px;
-  padding: 4px;
-  z-index: 10000;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-  transform: translate(-50%, -120%);
-  pointer-events: auto;
-  backdrop-filter: blur(6px);
+    position: absolute;
+    display: none; /* مخفي افتراضياً لحين تحديد عنصر */
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(0, 242, 254, 0.6);
+    border-radius: 8px;
+    padding: 4px;
+    z-index: 10000;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+    transform: translate(-50%, -100%); /* لضمان توسط الشريط فوق الإطار تماماً */
+    pointer-events: auto;
+    backdrop-filter: blur(6px);
 }
 
 .obj-btn {
@@ -958,4 +958,4 @@ body, html {
   .status-grid-cell:nth-child(n+5) {
     display: none;
   }
-                           }
+}
