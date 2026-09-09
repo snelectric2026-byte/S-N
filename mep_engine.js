@@ -274,6 +274,83 @@ class MEPEngineMaster {
       console.error('فشل استرجاع المشروع:', e);
     }
   }
+   class MEPEngineMaster {
+  constructor() {
+    this.elements = [];
+    this.gridSize = 24;
+    this.snapEnabled = true;
+    this.totalLoad = 0;
+    this.totalPressure = 0;
+    this.loadFromLocalStorage();
+  }
+
+  addElement(type, subType, x, y, properties = {}) {
+    const element = {
+      id: properties.id || ('elem_' + Date.now() + Math.random().toString(36).substring(2, 9)),
+      type: type,
+      subType: subType,
+      label: properties.label || subType,
+      x: this.snapEnabled ? Math.round(x / this.gridSize) * this.gridSize : x,
+      y: this.snapEnabled ? Math.round(y / this.gridSize) * this.gridSize : y,
+      left: properties.left !== undefined ? properties.left : x,
+      top: properties.top !== undefined ? properties.top : y,
+      width: properties.width || 50,
+      height: properties.height || 50,
+      load: properties.load || 0,
+      pressure: properties.pressure || 0
+    };
+    this.elements.push(element);
+    this.calculateSystemMetrics();
+    this.saveToLocalStorage();
+    return element;
+  }
+
+  removeElement(id) {
+    this.elements = this.elements.filter(el => el.id !== id);
+    this.calculateSystemMetrics();
+    this.saveToLocalStorage();
+  }
+
+  calculateSystemMetrics() {
+    this.totalLoad = this.elements.reduce((sum, el) => sum + (el.load || 0), 0);
+    this.totalPressure = this.elements.reduce((sum, el) => sum + (el.pressure || 0), 0);
+    if (typeof window.updateBottomStatusBar === 'function') {
+      window.updateBottomStatusBar();
+    }
+  }
+
+  saveToLocalStorage() {
+    try {
+      localStorage.setItem('snelectric_master_project', JSON.stringify(this.elements));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  loadFromLocalStorage() {
+    try {
+      const data = localStorage.getItem('snelectric_master_project');
+      if (data) {
+        this.elements = JSON.parse(data);
+        this.calculateSystemMetrics();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+
+window.mepEngine = new MEPEngineMaster();
+
 }
 
 window.mepEngine = new MEPEngineMaster();
+
+}
+
+}
+
+
+  
+}
+
