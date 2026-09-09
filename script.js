@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.98 FULL FIX
+   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.99 FULL MERGED & FIXED
    ========================================================================== */
 
 (function () {
@@ -183,12 +183,11 @@
     if (target) target.classList.toggle('active');
   };
 
-  /* ---------------------- مولد الرموز الهندسية (مع فصل الاقتطاع عن الغرفة) ---------------------- */
+  /* ---------------------- مولد الرموز الهندسية المعمارية ---------------------- */
   function createArchitecturalSymbol(subType, p) {
     const parts = [];
     if (subType === 'باب' || subType.includes('باب')) {
       const doorWidth = p.w;
-      // رمز الباب الهندسي مع خط الفتح وقوس الدوران المستقل تماماً
       const frameBg = new fabric.Rect({ width: doorWidth, height: 12, fill: '#020617', stroke: '#00f2fe', strokeWidth: 1.5, originX: 'center', originY: 'center' });
       const leaf = new fabric.Rect({ width: doorWidth, height: 4, fill: '#00f2fe', originX: 'left', originY: 'center', left: -doorWidth/2, top: -4 });
       const arc = new fabric.Circle({ radius: doorWidth, startAngle: Math.PI, endAngle: Math.PI * 1.5, stroke: '#00f2fe', strokeWidth: 1, strokeDashArray: [4, 4], fill: 'transparent', originX: 'center', originY: 'center', top: -doorWidth/2 });
@@ -199,7 +198,6 @@
       const glass1 = new fabric.Line([-w/2, 0, w/2, 0], { stroke: '#38bdf8', strokeWidth: 1.5, originX: 'center', originY: 'center' });
       parts.push(frame, glass1);
     } else {
-      // الغرفة نظيفة بدون أي اقتطاعات مدمجة مسبقاً
       const roomRect = new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
       parts.push(roomRect);
     }
@@ -243,16 +241,72 @@
     return parts;
   }
 
+  /* ---------------------- مولد رموز الأثاث والأجهزة الهندسي المتقدم (مدمج بالكامل) ---------------------- */
+  function createFurnitureAndApplianceSymbol(subType, p) {
+    const parts = [];
+    const w = p.w, h = p.h;
+    const stroke = p.stroke;
+    const fill = p.fill;
+
+    if (subType.includes('سرير') || subType === 'سرير') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Rect({ width: w * 0.7, height: h * 0.22, fill: 'rgba(255,255,255,0.2)', stroke: stroke, strokeWidth: 1, rx: 3, ry: 3, originX: 'center', originY: 'center', top: -h * 0.3 }));
+    } else if (subType.includes('كوميدينو') || subType === 'كوميدينو') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 2, ry: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Circle({ radius: 3, fill: stroke, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('تسريحه') || subType === 'تسريحه') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 2, ry: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Rect({ width: w * 0.6, height: h * 0.3, fill: 'rgba(0,242,254,0.15)', stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center', top: -h * 0.3 }));
+    } else if (subType.includes('دولاب') || subType === 'دولاب') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Line([0, -h/2, 0, h/2], { stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('طربيزه') || subType === 'طربيزه') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('كنبه') || subType === 'كنبه انتريه') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 8, ry: 8, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Rect({ width: w * 0.9, height: h * 0.3, fill: 'rgba(255,255,255,0.1)', stroke: stroke, strokeWidth: 1, rx: 4, ry: 4, originX: 'center', originY: 'center', top: -h * 0.3 }));
+    } else if (subType.includes('كرسى انتريه') || subType === 'كرسى انتريه') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Circle({ radius: w * 0.25, fill: 'rgba(255,255,255,0.1)', stroke: stroke, strokeWidth: 1, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('كرسى خشب') || subType === 'كرسى خشب') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Rect({ width: w * 0.8, height: h * 0.2, fill: 'transparent', stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center', top: -h * 0.35 }));
+    } else if (subType.includes('سخان') || subType === 'سخان كهربى') {
+      parts.push(new fabric.Rect({ width: w, height: h, rx: w/2, ry: w/2, fill: fill, stroke: stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Text('HEATER', { fontSize: 8, fill: stroke, fontFamily: 'Arial', originX: 'center', originY: 'center', fontWeight: 'bold' }));
+    } else if (subType.includes('بوتجاز') || subType === 'بوتجاز') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' }));
+      const r = Math.min(w, h) * 0.12;
+      parts.push(new fabric.Circle({ radius: r, fill: 'transparent', stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center', left: -w*0.25, top: -h*0.25 }));
+      parts.push(new fabric.Circle({ radius: r, fill: 'transparent', stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center', left: w*0.25, top: -h*0.25 }));
+      parts.push(new fabric.Circle({ radius: r, fill: 'transparent', stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center', left: -w*0.25, top: h*0.25 }));
+      parts.push(new fabric.Circle({ radius: r, fill: 'transparent', stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center', left: w*0.25, top: h*0.25 }));
+    } else if (subType.includes('فورن') || subType.includes('فرن') || subType === 'فوىن') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Rect({ width: w * 0.7, height: h * 0.5, fill: 'rgba(0,0,0,0.3)', stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center', top: h * 0.1 }));
+    } else if (subType.includes('غساله') || subType === 'غساله') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Circle({ radius: Math.min(w, h) * 0.3, fill: 'transparent', stroke: stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('ثلاجه') || subType === 'ثلاجه') {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Line([-w/2, -h*0.2, w/2, -h*0.2], { stroke: stroke, strokeWidth: 1.5, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('شاشه') || subType === 'شاشه') {
+      parts.push(new fabric.Rect({ width: w, height: h * 0.2, fill: fill, stroke: stroke, strokeWidth: 2, rx: 2, ry: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Rect({ width: w * 0.9, height: h * 0.7, fill: 'rgba(0,0,0,0.4)', stroke: stroke, strokeWidth: 2, rx: 2, ry: 2, originX: 'center', originY: 'center', top: -h * 0.15 }));
+    } else {
+      parts.push(new fabric.Rect({ width: w, height: h, fill: fill, stroke: stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' }));
+    }
+    return parts;
+  }
+
   /* وظيفة مواءمة الاقتطاع الفوري للباب عند إسقاطه على حدود الغرفة */
   function checkAndCutRoomWall(activeObj) {
     if (!canvas || !activeObj) return;
     if (activeObj.snSubtype !== 'باب' && !activeObj.snSubtype?.includes('باب')) return;
 
-    // البحث عن غرفة متداخلة مع الباب لإحداث تأثير الاقتطاع الهندسي
     const objects = canvas.getObjects();
     objects.forEach(obj => {
       if (obj !== activeObj && (obj.snSubtype === 'غرفة' || obj.snType === 'architectural')) {
-        // التحقق من تقاطع الإحداثيات لجعل الباب يندمج مع جدار الغرفة
         const objBox = obj.getBoundingRect();
         const doorBox = activeObj.getBoundingRect();
         
@@ -262,7 +316,6 @@
           doorBox.top < objBox.top + objBox.height &&
           doorBox.top + doorBox.height > objBox.top
         ) {
-          // جلب تأثير الانجذاب والاقتطاع البصري على جدار الغرفة
           showToast('🚪 تم مطابقة واقتطاع الباب على جدار الغرفة بنجاح');
         }
       }
@@ -277,7 +330,8 @@
     power:         { w: 50,  h: 50,  fill: 'rgba(255,51,68,0.2)',   stroke: '#ff3344', load: 20 },
     plumbing:      { w: 60,  h: 45,  fill: 'rgba(56,189,248,0.15)', stroke: '#38bdf8', pressure: 2.5 },
     ac:            { w: 70,  h: 35,  fill: 'rgba(34,197,94,0.15)',  stroke: '#22c55e', load: 25 },
-    furniture:     { w: 80,  h: 60,  fill: 'rgba(148,163,184,0.15)',stroke: '#94a3b8' }
+    furniture:     { w: 90,  h: 70,  fill: 'rgba(148,163,184,0.15)',stroke: '#94a3b8' },
+    appliance:     { w: 60,  h: 60,  fill: 'rgba(234,179,8,0.15)',  stroke: '#eab308', load: 15 }
   };
 
   window.addCatalogItem = function (type, subType) {
@@ -304,7 +358,7 @@
     } else if (type === 'ac') {
       parts = createMechanicalSymbol(subType, p);
     } else {
-      parts = [new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' })];
+      parts = createFurnitureAndApplianceSymbol(subType, p);
     }
 
     if (!hideLabel && subType !== 'باب') {
