@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.7 FIXED
+   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.8 FULL MASTER
    يعمل مع mep_engine.js + fabric.js + three.js
    ========================================================================== */
 
@@ -66,7 +66,6 @@
         canvas.requestRenderAll();
       }
 
-      // ميزة التركيب التلقائي والانقطاع عند الاقتراب من جدار
       const activeObj = canvas.getActiveObject();
       if (activeObj && activeObj.snType && (activeObj.snType === 'door' || activeObj.snType === 'window')) {
         checkWallIntersectionAndSnap(activeObj);
@@ -176,21 +175,18 @@
   function createArchitecturalSymbol(subType, p) {
     const parts = [];
     if (subType === 'باب' || subType.includes('باب')) {
-      // باب هندسي حقيقي: إطار + ضلفة + قوس الفتح
       const doorWidth = p.w;
       const rect = new fabric.Rect({ width: doorWidth, height: 8, fill: '#334155', stroke: '#00f2fe', strokeWidth: 1, originX: 'left', originY: 'center' });
       const leaf = new fabric.Rect({ width: doorWidth, height: 4, fill: '#00f2fe', originX: 'left', originY: 'center', top: -4 });
       const arc = new fabric.Circle({ radius: doorWidth, startAngle: 0, endAngle: Math.PI / 2, stroke: '#00f2fe', strokeWidth: 1, fill: 'transparent', originX: 'left', originY: 'top' });
       parts.push(rect, leaf, arc);
     } else if (subType === 'شباك' || subType.includes('شباك')) {
-      // شباك هندسي: خطوط متوازية تدل على الزجاج والجدار المقطوع
       const w = p.w, h = p.h;
       const frame = new fabric.Rect({ width: w, height: h, fill: 'transparent', stroke: '#38bdf8', strokeWidth: 2, originX: 'center', originY: 'center' });
       const glass1 = new fabric.Line([-w/2, 0, w/2, 0], { stroke: '#38bdf8', strokeWidth: 1, originX: 'center', originY: 'center' });
       const glass2 = new fabric.Line([0, -h/2, 0, h/2], { stroke: '#38bdf8', strokeWidth: 1, originX: 'center', originY: 'center' });
       parts.push(frame, glass1, glass2);
     } else {
-      // غرفة أو مساحة معمارية
       parts.push(new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' }));
     }
     return parts;
@@ -199,14 +195,11 @@
   function createElectricalSymbol(subType, p) {
     const parts = [new fabric.Circle({ radius: p.w/2, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' })];
     if (subType.includes('مفتاح') || subType.includes('ls')) {
-      // رمز مفتاح إنارة (حرف S مائل أو خط مائل)
       parts.push(new fabric.Text('S', { fontSize: 14, fill: p.stroke, fontFamily: 'Arial', originX: 'center', originY: 'center', fontWeight: 'bold' }));
     } else if (subType.includes('بريزة') || subType.includes('socket')) {
-      // رمز بريزة كهرباء (نصف دائرة مع خطوط)
       parts.push(new fabric.Line([-8, 0, 8, 0], { stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
       parts.push(new fabric.Line([0, -6, 0, 6], { stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
     } else if (subType.includes('لوحة') || subType.includes('panel')) {
-      // لوحة توزيع رئيسية (مربع بداخله علامة بروق)
       parts[0] = new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' });
       parts.push(new fabric.Text('DB', { fontSize: 12, fill: p.stroke, fontFamily: 'Arial', originX: 'center', originY: 'center', fontWeight: 'bold' }));
     } else {
@@ -253,7 +246,7 @@
   };
 
   window.addCatalogItem = function (type, subType) {
-    if (type === 'architectural' && subType === 'غرفة') { openRoomModal(subType); return; }
+    if (type === 'architectural' && (subType === 'غرفة' || subType.includes('غرفة'))) { openRoomModal(subType); return; }
     createShape(type, subType);
   };
 
@@ -288,7 +281,8 @@
 
     const group = new fabric.Group(parts, {
       left: start.x, top: start.y, originX: 'center', originY: 'center',
-      snElement: true, snType: type === 'carpentry' ? 'door' : type, snSubtype: subType, snLabel: label
+      snElement: true, snType: type === 'carpentry' ? 'door' : type, snSubtype: subType, snLabel: label,
+      customHeight: p.wallHeight || 280
     });
     
     canvas.add(group);
@@ -298,7 +292,7 @@
     if (window.mepEngine) {
       const e = window.mepEngine.addElement(type, subType, start.x, start.y, {
         width: p.w, height: p.h, label: label,
-        load: p.load || 0, pressure: p.pressure || 0
+        load: p.load || 0, pressure: p.pressure || 0, wallHeight: p.wallHeight || 280
       });
       group.snId = e.id;
     }
@@ -307,16 +301,12 @@
     showToast('تم إدراج: ' + label);
   }
 
-  /* ---------------------- ميزة الانقطاع والتركيب التلقائي للأبواب والنوافذ ع الجدران ---------------------- */
   function checkWallIntersectionAndSnap(obj) {
     if (!canvas) return;
     const objects = canvas.getObjects();
     objects.forEach(o => {
       if (o !== obj && o.snType === 'wall') {
-        // التحقق من التقارب أو التقاطع لمغنطة الباب/الشباك على مسار الجدار وانحرافه
         const objCenter = obj.getCenterPoint();
-        // حساب المسافة العمودية البسيطة أو التقاطع للالتصاق التلقائي بالجدار
-        // يمكننا تطبيق تفعيل الانقطاع البصري عبر تقليل الشفافية أو دمج الحسابات الهندسية
       }
     });
   }
@@ -359,10 +349,13 @@
   window.confirmRoomDimensions = function () {
     const wCm = parseFloat((document.getElementById('roomWidthInput') || {}).value) || 400;
     const lCm = parseFloat((document.getElementById('roomLengthInput') || {}).value) || 300;
+    const hCm = parseFloat((document.getElementById('roomHeightInput') || {}).value) || 280;
+    
     const wPx = (wCm * 10) / scaleMMperPX;
     const hPx = (lCm * 10) / scaleMMperPX;
+    
     window.closeRoomModal();
-    createShape('architectural', pendingRoomName, { w: wPx, h: hPx });
+    createShape('architectural', pendingRoomName, { w: wPx, h: hPx, wallHeight: hCm });
   };
 
   /* ---------------------- نافذة أبعاد العنصر (T) ---------------------- */
@@ -412,7 +405,7 @@
   /* ---------------------- تراجع / إعادة ---------------------- */
   function pushUndo() {
     if (!canvas || isRestoring) return;
-    undoStack.push(JSON.stringify(canvas.toJSON(['snElement', 'snType', 'snSubtype', 'snLabel', 'snId'])));
+    undoStack.push(JSON.stringify(canvas.toJSON(['snElement', 'snType', 'snSubtype', 'snLabel', 'snId', 'customHeight'])));
     if (undoStack.length > 40) undoStack.shift();
     redoStack = [];
   }
@@ -440,7 +433,7 @@
     showToast('↪️ تمت الإعادة');
   };
 
-  /* ---------------------- التصديق ---------------------- */
+  /* ---------------------- التصدير ---------------------- */
   window.exportPNG = function () {
     if (!canvas) return;
     const url = canvas.toDataURL({ format: 'png', multiplier: 2, backgroundColor: '#020617' });
@@ -500,14 +493,18 @@
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x020617);
       const camera = new THREE.PerspectiveCamera(55, cont.clientWidth / cont.clientHeight, 0.1, 5000);
-      camera.position.set(300, 300, 400);
+      camera.position.set(0, 400, 500);
+      
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(cont.clientWidth, cont.clientHeight);
       cont.appendChild(renderer.domElement);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-      const dir = new THREE.DirectionalLight(0x00f2fe, 0.8);
-      dir.position.set(200, 400, 200); scene.add(dir);
-      scene.add(new THREE.GridHelper(1000, 40, 0x00f2fe, 0x1e293b));
+      
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+      dir.position.set(300, 600, 300); 
+      scene.add(dir);
+      
+      scene.add(new THREE.GridHelper(1200, 50, 0x00f2fe, 0x1e293b));
 
       let controls = null;
       if (THREE.OrbitControls) {
@@ -534,17 +531,61 @@
     while (three.group.children.length) three.group.remove(three.group.children[0]);
     const eng = window.mepEngine;
     if (!eng) return;
+
+    const defaultWallHeight = 140;
+
     eng.elements.forEach(el => {
-      const h = el.type === 'wall' || el.type === 'architectural' ? 120 : 30;
-      const geo = new THREE.BoxGeometry(el.width || 40, h, el.height || 40);
-      const color = el.type === 'electrical' ? 0xff3344
-        : el.type === 'plumbing' ? 0x38bdf8
-        : el.type === 'furniture' ? 0x94a3b8 : 0x00f2fe;
-      const mat = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: 0.85 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set((el.x || 0) - 250, h / 2, (el.y || 0) - 250);
-      three.group.add(mesh);
+      let mesh;
+      const posX = (el.x || el.left || 0) - 250;
+      const posZ = (el.y || el.top || 0) - 250;
+      const w = el.width || 40;
+      const d = el.height || 40;
+      const hVal = el.wallHeight || defaultWallHeight;
+
+      if (el.type === 'wall') {
+        const wallGeo = new THREE.BoxGeometry(w, hVal, d);
+        const wallMat = new THREE.MeshLambertMaterial({ color: 0x475569, transparent: true, opacity: 0.9 });
+        mesh = new THREE.Mesh(wallGeo, wallMat);
+        mesh.position.set(posX, hVal / 2, posZ);
+
+      } else if (el.type === 'architectural' || el.type === 'room') {
+        const floorGeo = new THREE.BoxGeometry(w, 4, d);
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x0f172a, transparent: true, opacity: 0.7 });
+        mesh = new THREE.Mesh(floorGeo, floorMat);
+        mesh.position.set(posX, 2, posZ);
+
+      } else if (el.type === 'carpentry' || el.type === 'door' || el.type === 'window') {
+        const isDoor = (el.subType || '').includes('باب');
+        const h = isDoor ? 100 : 60;
+        const geo = new THREE.BoxGeometry(w, h, 6);
+        const mat = new THREE.MeshLambertMaterial({ color: isDoor ? 0xf5b813 : 0x38bdf8, transparent: true, opacity: 0.85 });
+        mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(posX, h / 2, posZ);
+
+      } else if (el.type === 'electrical' || el.type === 'power') {
+        const geo = new THREE.BoxGeometry(12, 12, 4);
+        const mat = new THREE.MeshLambertMaterial({ color: 0xff3344 });
+        mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(posX, 50, posZ);
+
+      } else if (el.type === 'plumbing') {
+        const geo = new THREE.CylinderGeometry(15, 15, 30, 16);
+        const mat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 });
+        mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(posX, 15, posZ);
+
+      } else {
+        const geo = new THREE.BoxGeometry(w, 35, d);
+        const mat = new THREE.MeshLambertMaterial({ color: 0x94a3b8 });
+        mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(posX, 17.5, posZ);
+      }
+
+      if (mesh) {
+        three.group.add(mesh);
+      }
     });
+
     three.renderer.setSize(cont.clientWidth, cont.clientHeight);
   }
 
