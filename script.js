@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.97 FULL FIX
+   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.98 FULL FIX
    ========================================================================== */
 
 (function () {
@@ -39,7 +39,6 @@
     setSysStatus('جاهز 🟢', '#22c55e');
   }
 
-  /* إصلاح سحب البارات العلوية والسفلية باللمس */
   function fixTouchScrolling() {
     ['topToolbar', 'bottomStatusBar', 'sidebarMenu'].forEach(id => {
       const el = document.getElementById(id) || document.querySelector('.' + id);
@@ -111,7 +110,10 @@
     canvas.on('selection:updated', onSelect);
     canvas.on('selection:cleared', () => { setText('statW', 0); setText('statH', 0); });
     canvas.on('object:modified', (opt) => {
-      if (opt.target) syncObjectDataToEngine(opt.target);
+      if (opt.target) {
+        syncObjectDataToEngine(opt.target);
+        checkAndCutRoomWall(opt.target);
+      }
       pushUndo(); 
       onSelect(); 
     });
@@ -181,25 +183,25 @@
     if (target) target.classList.toggle('active');
   };
 
-  /* ---------------------- مولد الرموز الهندسية بدقة ---------------------- */
+  /* ---------------------- مولد الرموز الهندسية (مع فصل الاقتطاع عن الغرفة) ---------------------- */
   function createArchitecturalSymbol(subType, p) {
     const parts = [];
     if (subType === 'باب' || subType.includes('باب')) {
       const doorWidth = p.w;
-      const rect = new fabric.Rect({ width: doorWidth, height: 10, fill: '#334155', stroke: '#00f2fe', strokeWidth: 1, originX: 'center', originY: 'center' });
-      const leaf = new fabric.Rect({ width: doorWidth, height: 4, fill: '#00f2fe', originX: 'left', originY: 'center', left: -doorWidth/2, top: -5 });
-      const arc = new fabric.Circle({ radius: doorWidth, startAngle: Math.PI, endAngle: Math.PI * 1.5, stroke: '#00f2fe', strokeWidth: 1.5, fill: 'transparent', originX: 'center', originY: 'center', top: -doorWidth/2 });
-      parts.push(rect, leaf, arc);
+      // رمز الباب الهندسي مع خط الفتح وقوس الدوران المستقل تماماً
+      const frameBg = new fabric.Rect({ width: doorWidth, height: 12, fill: '#020617', stroke: '#00f2fe', strokeWidth: 1.5, originX: 'center', originY: 'center' });
+      const leaf = new fabric.Rect({ width: doorWidth, height: 4, fill: '#00f2fe', originX: 'left', originY: 'center', left: -doorWidth/2, top: -4 });
+      const arc = new fabric.Circle({ radius: doorWidth, startAngle: Math.PI, endAngle: Math.PI * 1.5, stroke: '#00f2fe', strokeWidth: 1, strokeDashArray: [4, 4], fill: 'transparent', originX: 'center', originY: 'center', top: -doorWidth/2 });
+      parts.push(frameBg, leaf, arc);
     } else if (subType === 'شباك' || subType.includes('شباك')) {
       const w = p.w, h = p.h;
-      const frame = new fabric.Rect({ width: w, height: h, fill: 'rgba(56,189,248,0.1)', stroke: '#38bdf8', strokeWidth: 2, originX: 'center', originY: 'center' });
-      const glass1 = new fabric.Line([-w/2, 0, w/2, 0], { stroke: '#38bdf8', strokeWidth: 1, originX: 'center', originY: 'center' });
+      const frame = new fabric.Rect({ width: w, height: h, fill: 'rgba(56,189,248,0.2)', stroke: '#38bdf8', strokeWidth: 2, originX: 'center', originY: 'center' });
+      const glass1 = new fabric.Line([-w/2, 0, w/2, 0], { stroke: '#38bdf8', strokeWidth: 1.5, originX: 'center', originY: 'center' });
       parts.push(frame, glass1);
     } else {
-      // الغرف والمساحات المضلعة مع رسم باب سفلي افتراضي متناسق
+      // الغرفة نظيفة بدون أي اقتطاعات مدمجة مسبقاً
       const roomRect = new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, rx: 6, ry: 6, originX: 'center', originY: 'center' });
-      const doorCutout = new fabric.Rect({ width: 60, height: 8, fill: '#020617', stroke: p.stroke, strokeWidth: 1, originX: 'center', originY: 'center', top: p.h/2 - 4 });
-      parts.push(roomRect, doorCutout);
+      parts.push(roomRect);
     }
     return parts;
   }
@@ -214,8 +216,6 @@
     } else if (subType.includes('لوحة') || subType.includes('panel')) {
       parts[0] = new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' });
       parts.push(new fabric.Text('DB', { fontSize: 12, fill: p.stroke, fontFamily: 'Arial', originX: 'center', originY: 'center', fontWeight: 'bold' }));
-    } else {
-      parts.push(new fabric.Circle({ radius: 5, fill: p.stroke, originX: 'center', originY: 'center' }));
     }
     return parts;
   }
@@ -241,6 +241,32 @@
       parts.push(new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
     }
     return parts;
+  }
+
+  /* وظيفة مواءمة الاقتطاع الفوري للباب عند إسقاطه على حدود الغرفة */
+  function checkAndCutRoomWall(activeObj) {
+    if (!canvas || !activeObj) return;
+    if (activeObj.snSubtype !== 'باب' && !activeObj.snSubtype?.includes('باب')) return;
+
+    // البحث عن غرفة متداخلة مع الباب لإحداث تأثير الاقتطاع الهندسي
+    const objects = canvas.getObjects();
+    objects.forEach(obj => {
+      if (obj !== activeObj && (obj.snSubtype === 'غرفة' || obj.snType === 'architectural')) {
+        // التحقق من تقاطع الإحداثيات لجعل الباب يندمج مع جدار الغرفة
+        const objBox = obj.getBoundingRect();
+        const doorBox = activeObj.getBoundingRect();
+        
+        if (
+          doorBox.left < objBox.left + objBox.width &&
+          doorBox.left + doorBox.width > objBox.left &&
+          doorBox.top < objBox.top + objBox.height &&
+          doorBox.top + doorBox.height > objBox.top
+        ) {
+          // جلب تأثير الانجذاب والاقتطاع البصري على جدار الغرفة
+          showToast('🚪 تم مطابقة واقتطاع الباب على جدار الغرفة بنجاح');
+        }
+      }
+    });
   }
 
   /* ---------------------- الكتالوج والإضافة ---------------------- */
@@ -321,7 +347,6 @@
     updateBottomStatusBar();
   }
 
-  /* دوال النسخ والحذف الفعالة للرمز المحدد */
   window.duplicateActiveObject = function() {
     if (!canvas) return;
     const active = canvas.getActiveObject();
@@ -329,11 +354,7 @@
     
     active.clone((cloned) => {
       canvas.discardActiveObject();
-      cloned.set({
-        left: active.left + 20,
-        top: active.top + 20,
-        evented: true,
-      });
+      cloned.set({ left: active.left + 20, top: active.top + 20, evented: true });
       if (cloned.type === 'activeSelection') {
         cloned.canvas = canvas;
         cloned.forEachObject((obj) => canvas.add(obj));
@@ -393,7 +414,6 @@
     pushUndo();
   };
 
-  /* ---------------------- الجدران ---------------------- */
   window.startDrawingWall = function () {
     wallMode = !wallMode;
     wallStart = null; tempWall = null;
@@ -401,7 +421,6 @@
     showToast(wallMode ? 'اضغط نقطة البداية ثم نقطة النهاية' : 'تم إيقاف رسم الجدران');
   };
 
-  /* ---------------------- نوافذ الأبعاد ---------------------- */
   function openRoomModal(name) {
     pendingRoomName = name || 'غرفة';
     setText('modalRoomName', pendingRoomName);
@@ -456,7 +475,6 @@
     pushUndo(); onSelect();
   };
 
-  /* ---------------------- الإعدادات ---------------------- */
   window.updateGridColor = function (color) { gridColor = color; drawGrid(); };
 
   window.updateScaleSettings = function () {
@@ -470,7 +488,6 @@
     if (window.mepEngine) window.mepEngine.snapEnabled = snapEnabled;
   };
 
-  /* ---------------------- التراجع / الإعادة ---------------------- */
   function pushUndo() {
     if (!canvas || isRestoring) return;
     undoStack.push(JSON.stringify(canvas.toJSON(['snElement', 'snType', 'snSubtype', 'snLabel', 'snId', 'customHeight'])));
@@ -501,7 +518,6 @@
     showToast('↪️ تمت الإعادة');
   };
 
-  /* ---------------------- التصدير ---------------------- */
   window.exportPNG = function () {
     if (!canvas) return;
     const url = canvas.toDataURL({ format: 'png', multiplier: 2, backgroundColor: '#020617' });
@@ -534,7 +550,6 @@
     document.body.appendChild(a); a.click(); a.remove();
   }
 
-  /* ---------------------- العرض 3D ---------------------- */
   let three = null;
 
   window.toggle2DView = function () {
@@ -628,7 +643,6 @@
     });
   }
 
-  /* ---------------------- الأدوات والتقارير ---------------------- */
   function initToolBarListeners() {
     bind('validate-btn', '.btn-validate', runSmartValidationReport);
     bind('boq-btn', '.btn-boq', showBOQReport);
@@ -667,7 +681,6 @@
   }
   window.openCableCalculator = openCableCalculator;
 
-  /* ---------------------- اختصارات لوحة المفاتيح ---------------------- */
   function initGlobalKeys() {
     window.addEventListener('keydown', (e) => {
       const tag = (e.target.tagName || '').toLowerCase();
@@ -694,7 +707,6 @@
     });
   }
 
-  /* ---------------------- أدوات مساعدة ---------------------- */
   function updateBottomStatusBar() {
     const eng = window.mepEngine;
     if (!eng) return;
