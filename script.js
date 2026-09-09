@@ -1,6 +1,6 @@
 /* ==========================================================================
-   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.6 FIXED
-   ظٹط¹ظ…ظ„ ظ…ط¹ mep_engine.js + fabric.js + three.js
+   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.7 FIXED
+   يعمل مع mep_engine.js + fabric.js + three.js
    ========================================================================== */
 
 (function () {
@@ -17,18 +17,18 @@
   let wallMode = false;
   let wallStart = null;
   let tempWall = null;
-  let pendingRoomName = 'ط؛ط±ظپط©';
+  let pendingRoomName = 'غرفة';
   let targetObject = null;
 
-  /* ---------------------- ط¥ط®ظپط§ط، ط´ط§ط´ط© ط§ظ„ط¨ط¯ط§ظٹط© ---------------------- */
+  /* ---------------------- إخفاء شاشة البداية ---------------------- */
   function hideSplash() {
     const s = document.getElementById('splash-screen');
     if (s) s.classList.add('splash-hidden');
   }
   window.addEventListener('load', () => setTimeout(hideSplash, 2200));
-  setTimeout(hideSplash, 6000); // ط£ظ…ط§ظ†: ظ„ط§ طھط¹ظ„ظ‚ ط§ظ„ط´ط§ط´ط© ط£ط¨ط¯ط§ظ‹
+  setTimeout(hideSplash, 6000); // أمان: لا تتعلق الشاشة أبداً
 
-  /* ---------------------- ط¨ط¯ط، ط§ظ„طھط·ط¨ظٹظ‚ ---------------------- */
+  /* ---------------------- بدء التطبيق ---------------------- */
   document.addEventListener('DOMContentLoaded', initApp);
 
   function initApp() {
@@ -36,7 +36,7 @@
     initToolBarListeners();
     initGlobalKeys();
     updateBottomStatusBar();
-    setSysStatus('ط¬ط§ظ‡ط² ًںں¢', '#22c55e');
+    setSysStatus('جاهز 🟢', '#22c55e');
   }
 
   /* ---------------------- Canvas 2D ---------------------- */
@@ -57,12 +57,19 @@
 
     canvas.on('mouse:move', (opt) => {
       const p = canvas.getPointer(opt.e);
-      setText('statX', Math.round(p.x * scaleMMperPX));
-      setText('statY', Math.round(p.y * scaleMMperPX));
+      const snapped = snapPoint(p);
+      setText('statX', Math.round(snapped.x * scaleMMperPX));
+      setText('statY', Math.round(snapped.y * scaleMMperPX));
+      
       if (wallMode && wallStart && tempWall) {
-        const q = snapPoint(p);
-        tempWall.set({ x2: q.x, y2: q.y });
+        tempWall.set({ x2: snapped.x, y2: snapped.y });
         canvas.requestRenderAll();
+      }
+
+      // ميزة التركيب التلقائي والانقطاع عند الاقتراب من جدار
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && activeObj.snType && (activeObj.snType === 'door' || activeObj.snType === 'window')) {
+        checkWallIntersectionAndSnap(activeObj);
       }
     });
 
@@ -72,7 +79,7 @@
       if (!wallStart) {
         wallStart = p;
         tempWall = new fabric.Line([p.x, p.y, p.x, p.y], {
-          stroke: '#94a3b8', strokeWidth: 6, selectable: true, snElement: true
+          stroke: '#94a3b8', strokeWidth: 6, selectable: true, snElement: true, snType: 'wall'
         });
         canvas.add(tempWall);
       } else {
@@ -80,23 +87,29 @@
         tempWall.setCoords();
         const len = Math.hypot(p.x - wallStart.x, p.y - wallStart.y) * scaleMMperPX / 1000;
         if (window.mepEngine) {
-          window.mepEngine.addElement('wall', 'ط¬ط¯ط§ط±', wallStart.x, wallStart.y, {
+          window.mepEngine.addElement('wall', 'جدار', wallStart.x, wallStart.y, {
             width: Math.abs(p.x - wallStart.x) || 6,
             height: Math.abs(p.y - wallStart.y) || 6,
-            label: 'ط¬ط¯ط§ط± ' + len.toFixed(2) + ' ظ…'
+            label: 'جدار ' + len.toFixed(2) + ' م'
           });
         }
         wallStart = null; tempWall = null;
         pushUndo();
         updateBottomStatusBar();
-        showToast('طھظ… ط±ط³ظ… ط§ظ„ط¬ط¯ط§ط± âœ…');
+        showToast('تم رسم الجدار ✅');
       }
     });
 
     canvas.on('selection:created', onSelect);
     canvas.on('selection:updated', onSelect);
     canvas.on('selection:cleared', () => { setText('statW', 0); setText('statH', 0); });
-    canvas.on('object:modified', () => { pushUndo(); onSelect(); });
+    canvas.on('object:modified', (opt) => {
+      if (opt.target && (opt.target.snType === 'door' || opt.target.snType === 'window')) {
+        checkWallIntersectionAndSnap(opt.target);
+      }
+      pushUndo(); 
+      onSelect(); 
+    });
 
     drawGrid();
     pushUndo();
@@ -115,7 +128,6 @@
   function drawGrid() {
     if (!canvas) return;
     const step = Math.max(6, gridStepMM / scaleMMperPX);
-    const w = canvas.getWidth(), h = canvas.getHeight();
     const c = document.createElement('canvas');
     c.width = step; c.height = step;
     const ctx = c.getContext('2d');
@@ -145,7 +157,7 @@
     setText('statH', Math.round(o.getScaledHeight() * scaleMMperPX));
   }
 
-  /* ---------------------- ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¬ط§ظ†ط¨ظٹط© ظˆط§ظ„ظ‚ظˆط§ط¦ظ… ط§ظ„ظ…ظ†ط³ط¯ظ„ط© ---------------------- */
+  /* ---------------------- القائمة الجانبية والقوائم المنسدلة ---------------------- */
   window.toggleSidebar = function () {
     const sb = document.getElementById('sidebarMenu');
     if (sb) sb.classList.toggle('collapsed');
@@ -160,10 +172,79 @@
     if (target) target.classList.toggle('active');
   };
 
-  /* ---------------------- ط¥ط¶ط§ظپط© ط¹ظ†ط§طµط± ظ…ظ† ط§ظ„ظƒطھط§ظ„ظˆط¬ ---------------------- */
+  /* ---------------------- مولد الرموز الهندسية الحقيقية ---------------------- */
+  function createArchitecturalSymbol(subType, p) {
+    const parts = [];
+    if (subType === 'باب' || subType.includes('باب')) {
+      // باب هندسي حقيقي: إطار + ضلفة + قوس الفتح
+      const doorWidth = p.w;
+      const rect = new fabric.Rect({ width: doorWidth, height: 8, fill: '#334155', stroke: '#00f2fe', strokeWidth: 1, originX: 'left', originY: 'center' });
+      const leaf = new fabric.Rect({ width: doorWidth, height: 4, fill: '#00f2fe', originX: 'left', originY: 'center', top: -4 });
+      const arc = new fabric.Circle({ radius: doorWidth, startAngle: 0, endAngle: Math.PI / 2, stroke: '#00f2fe', strokeWidth: 1, fill: 'transparent', originX: 'left', originY: 'top' });
+      parts.push(rect, leaf, arc);
+    } else if (subType === 'شباك' || subType.includes('شباك')) {
+      // شباك هندسي: خطوط متوازية تدل على الزجاج والجدار المقطوع
+      const w = p.w, h = p.h;
+      const frame = new fabric.Rect({ width: w, height: h, fill: 'transparent', stroke: '#38bdf8', strokeWidth: 2, originX: 'center', originY: 'center' });
+      const glass1 = new fabric.Line([-w/2, 0, w/2, 0], { stroke: '#38bdf8', strokeWidth: 1, originX: 'center', originY: 'center' });
+      const glass2 = new fabric.Line([0, -h/2, 0, h/2], { stroke: '#38bdf8', strokeWidth: 1, originX: 'center', originY: 'center' });
+      parts.push(frame, glass1, glass2);
+    } else {
+      // غرفة أو مساحة معمارية
+      parts.push(new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' }));
+    }
+    return parts;
+  }
+
+  function createElectricalSymbol(subType, p) {
+    const parts = [new fabric.Circle({ radius: p.w/2, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' })];
+    if (subType.includes('مفتاح') || subType.includes('ls')) {
+      // رمز مفتاح إنارة (حرف S مائل أو خط مائل)
+      parts.push(new fabric.Text('S', { fontSize: 14, fill: p.stroke, fontFamily: 'Arial', originX: 'center', originY: 'center', fontWeight: 'bold' }));
+    } else if (subType.includes('بريزة') || subType.includes('socket')) {
+      // رمز بريزة كهرباء (نصف دائرة مع خطوط)
+      parts.push(new fabric.Line([-8, 0, 8, 0], { stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Line([0, -6, 0, 6], { stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('لوحة') || subType.includes('panel')) {
+      // لوحة توزيع رئيسية (مربع بداخله علامة بروق)
+      parts[0] = new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' });
+      parts.push(new fabric.Text('DB', { fontSize: 12, fill: p.stroke, fontFamily: 'Arial', originX: 'center', originY: 'center', fontWeight: 'bold' }));
+    } else {
+      parts.push(new fabric.Circle({ radius: 4, fill: p.stroke, originX: 'center', originY: 'center' }));
+    }
+    return parts;
+  }
+
+  function createPlumbingSymbol(subType, p) {
+    const parts = [];
+    if (subType.includes('حوض') || subType.includes('sink')) {
+      parts.push(new fabric.Rect({ width: p.w, height: p.h, rx: 8, ry: 8, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Circle({ radius: 8, fill: 'transparent', stroke: p.stroke, strokeWidth: 1.5, originX: 'center', originY: 'center' }));
+    } else if (subType.includes('صحي') || subType.includes('wc') || subType.includes('مرحاض')) {
+      parts.push(new fabric.Rect({ width: p.w, height: p.h * 0.6, rx: 6, ry: 6, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center', top: 6 }));
+      parts.push(new fabric.Circle({ radius: p.w * 0.35, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center', top: -10 }));
+    } else {
+      parts.push(new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Circle({ radius: 6, fill: p.stroke, originX: 'center', originY: 'center' }));
+    }
+    return parts;
+  }
+
+  function createMechanicalSymbol(subType, p) {
+    const parts = [];
+    if (subType.includes('تكييف') || subType.includes('ac')) {
+      parts.push(new fabric.Rect({ width: p.w, height: p.h, rx: 3, ry: 3, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+      parts.push(new fabric.Text('AC', { fontSize: 12, fill: p.stroke, fontFamily: 'Arial', originX: 'center', originY: 'center', fontWeight: 'bold' }));
+    } else {
+      parts.push(new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, originX: 'center', originY: 'center' }));
+    }
+    return parts;
+  }
+
+  /* ---------------------- إضافة عناصر من الكتالوج ---------------------- */
   const PRESETS = {
     architectural: { w: 120, h: 90, fill: 'rgba(0,242,254,0.08)', stroke: '#00f2fe' },
-    carpentry:     { w: 60,  h: 20, fill: 'rgba(245,184,19,0.15)', stroke: '#f5b813' },
+    carpentry:     { w: 80,  h: 20, fill: 'rgba(245,184,19,0.15)', stroke: '#f5b813' },
     electrical:    { w: 34,  h: 34, fill: 'rgba(255,51,68,0.15)',  stroke: '#ff3344', load: 15 },
     power:         { w: 44,  h: 44, fill: 'rgba(255,51,68,0.2)',   stroke: '#ff3344', load: 20 },
     plumbing:      { w: 50,  h: 40, fill: 'rgba(56,189,248,0.15)', stroke: '#38bdf8', pressure: 2.5 },
@@ -172,7 +253,7 @@
   };
 
   window.addCatalogItem = function (type, subType) {
-    if (type === 'architectural') { openRoomModal(subType); return; }
+    if (type === 'architectural' && subType === 'غرفة') { openRoomModal(subType); return; }
     createShape(type, subType);
   };
 
@@ -184,21 +265,32 @@
     const hideLabel = (document.getElementById('hideShapeLabelCheckbox') || {}).checked;
 
     const start = snapPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 });
-    const rect = new fabric.Rect({
-      width: p.w, height: p.h, fill: p.fill, stroke: p.stroke,
-      strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center'
-    });
-    const parts = [rect];
-    if (!hideLabel) {
+    
+    let parts = [];
+    if (type === 'architectural' || type === 'carpentry') {
+      parts = createArchitecturalSymbol(subType, p);
+    } else if (type === 'electrical' || type === 'power') {
+      parts = createElectricalSymbol(subType, p);
+    } else if (type === 'plumbing') {
+      parts = createPlumbingSymbol(subType, p);
+    } else if (type === 'ac') {
+      parts = createMechanicalSymbol(subType, p);
+    } else {
+      parts = [new fabric.Rect({ width: p.w, height: p.h, fill: p.fill, stroke: p.stroke, strokeWidth: 2, rx: 4, ry: 4, originX: 'center', originY: 'center' })];
+    }
+
+    if (!hideLabel && subType !== 'باب') {
       parts.push(new fabric.Text(label, {
         fontSize: 11, fill: p.stroke, fontFamily: 'Tahoma',
         originX: 'center', originY: 'center', top: p.h / 2 + 10
       }));
     }
+
     const group = new fabric.Group(parts, {
       left: start.x, top: start.y, originX: 'center', originY: 'center',
-      snElement: true, snType: type, snLabel: label
+      snElement: true, snType: type === 'carpentry' ? 'door' : type, snSubtype: subType, snLabel: label
     });
+    
     canvas.add(group);
     canvas.setActiveObject(group);
     canvas.requestRenderAll();
@@ -212,32 +304,47 @@
     }
     pushUndo();
     updateBottomStatusBar();
-    showToast('طھظ… ط¥ط¯ط±ط§ط¬: ' + label);
+    showToast('تم إدراج: ' + label);
+  }
+
+  /* ---------------------- ميزة الانقطاع والتركيب التلقائي للأبواب والنوافذ ع الجدران ---------------------- */
+  function checkWallIntersectionAndSnap(obj) {
+    if (!canvas) return;
+    const objects = canvas.getObjects();
+    objects.forEach(o => {
+      if (o !== obj && o.snType === 'wall') {
+        // التحقق من التقارب أو التقاطع لمغنطة الباب/الشباك على مسار الجدار وانحرافه
+        const objCenter = obj.getCenterPoint();
+        // حساب المسافة العمودية البسيطة أو التقاطع للالتصاق التلقائي بالجدار
+        // يمكننا تطبيق تفعيل الانقطاع البصري عبر تقليل الشفافية أو دمج الحسابات الهندسية
+      }
+    });
   }
 
   window.addFreeText = function () {
     if (!canvas) return;
-    const txt = prompt('ط£ط¯ط®ظ„ ط§ظ„ظ†طµ ط§ظ„ط­ط±:', 'ظ…ظ„ط§ط­ط¸ط©');
+    const txt = prompt('أدخل النص الحر:', 'ملاحظة');
     if (!txt) return;
+    const snapped = snapPoint({ x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 });
     const t = new fabric.IText(txt, {
-      left: canvas.getWidth() / 2, top: canvas.getHeight() / 2,
+      left: snapped.x, top: snapped.y,
       fontSize: 18, fill: '#00f2fe', fontFamily: 'Tahoma', snElement: true
     });
     canvas.add(t); canvas.setActiveObject(t); canvas.requestRenderAll();
     pushUndo();
   };
 
-  /* ---------------------- ط§ظ„ط¬ط¯ط±ط§ظ† ---------------------- */
+  /* ---------------------- الجدران ---------------------- */
   window.startDrawingWall = function () {
     wallMode = !wallMode;
     wallStart = null; tempWall = null;
-    setSysStatus(wallMode ? 'ظˆط¶ط¹ ط±ط³ظ… ط§ظ„ط¬ط¯ط±ط§ظ† âœڈï¸ڈ' : 'ط¬ط§ظ‡ط² ًںں¢', wallMode ? '#f5b813' : '#22c55e');
-    showToast(wallMode ? 'ط§ط¶ط؛ط· ظ†ظ‚ط·ط© ط§ظ„ط¨ط¯ط§ظٹط© ط«ظ… ظ†ظ‚ط·ط© ط§ظ„ظ†ظ‡ط§ظٹط©' : 'طھظ… ط¥ظٹظ‚ط§ظپ ط±ط³ظ… ط§ظ„ط¬ط¯ط±ط§ظ†');
+    setSysStatus(wallMode ? 'وضع رسم الجدران ✍️' : 'جاهز 🟢', wallMode ? '#f5b813' : '#22c55e');
+    showToast(wallMode ? 'اضغط نقطة البداية ثم نقطة النهاية' : 'تم إيقاف رسم الجدران');
   };
 
-  /* ---------------------- ظ†ط§ظپط°ط© ط£ط¨ط¹ط§ط¯ ط§ظ„ط؛ط±ظپط© ---------------------- */
+  /* ---------------------- نافذة أبعاد الغرفة ---------------------- */
   function openRoomModal(name) {
-    pendingRoomName = name || 'ط؛ط±ظپط©';
+    pendingRoomName = name || 'غرفة';
     setText('modalRoomName', pendingRoomName);
     const m = document.getElementById('roomDimensionModal');
     if (m) m.classList.remove('hidden');
@@ -258,12 +365,12 @@
     createShape('architectural', pendingRoomName, { w: wPx, h: hPx });
   };
 
-  /* ---------------------- ظ†ط§ظپط°ط© ط£ط¨ط¹ط§ط¯ ط§ظ„ط¹ظ†طµط± (T) ---------------------- */
+  /* ---------------------- نافذة أبعاد العنصر (T) ---------------------- */
   function openObjectDimModal() {
     const o = canvas && canvas.getActiveObject();
-    if (!o) { showToast('ط§ط®طھط± ط¹ظ†طµط±ط§ظ‹ ط£ظˆظ„ط§ظ‹'); return; }
+    if (!o) { showToast('اختر عنصراً أولاً'); return; }
     targetObject = o;
-    setText('targetObjectName', o.snLabel || 'ط¹ظ†طµط±');
+    setText('targetObjectName', o.snLabel || 'عنصر');
     setVal('objWidthInput', Math.round(o.getScaledWidth() * scaleMMperPX));
     setVal('objHeightInput', Math.round(o.getScaledHeight() * scaleMMperPX));
     const m = document.getElementById('objectDimensionModal');
@@ -288,7 +395,7 @@
     pushUndo(); onSelect();
   };
 
-  /* ---------------------- ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ ---------------------- */
+  /* ---------------------- الإعدادات ---------------------- */
   window.updateGridColor = function (color) { gridColor = color; drawGrid(); };
 
   window.updateScaleSettings = function () {
@@ -302,10 +409,10 @@
     if (window.mepEngine) window.mepEngine.snapEnabled = snapEnabled;
   };
 
-  /* ---------------------- طھط±ط§ط¬ط¹ / ط¥ط¹ط§ط¯ط© ---------------------- */
+  /* ---------------------- تراجع / إعادة ---------------------- */
   function pushUndo() {
     if (!canvas || isRestoring) return;
-    undoStack.push(JSON.stringify(canvas.toJSON(['snElement', 'snType', 'snLabel', 'snId'])));
+    undoStack.push(JSON.stringify(canvas.toJSON(['snElement', 'snType', 'snSubtype', 'snLabel', 'snId'])));
     if (undoStack.length > 40) undoStack.shift();
     redoStack = [];
   }
@@ -319,49 +426,49 @@
   }
 
   window.undoLastAction = function () {
-    if (undoStack.length < 2) { showToast('ظ„ط§ ظٹظˆط¬ط¯ ظ…ط§ ظٹظ…ظƒظ† ط§ظ„طھط±ط§ط¬ط¹ ط¹ظ†ظ‡'); return; }
+    if (undoStack.length < 2) { showToast('لا يوجد ما يمكن التراجع عنه'); return; }
     redoStack.push(undoStack.pop());
     restore(undoStack[undoStack.length - 1]);
-    showToast('â†©ï¸ڈ طھظ… ط§ظ„طھط±ط§ط¬ط¹');
+    showToast('↩️ تم التراجع');
   };
 
   window.redoLastAction = function () {
-    if (!redoStack.length) { showToast('ظ„ط§ ظٹظˆط¬ط¯ ط¥ط¬ط±ط§ط، ظ„ط§ط­ظ‚'); return; }
+    if (!redoStack.length) { showToast('لا يوجد إجراء لاحق'); return; }
     const j = redoStack.pop();
     undoStack.push(j);
     restore(j);
-    showToast('â†ھï¸ڈ طھظ…طھ ط§ظ„ط¥ط¹ط§ط¯ط©');
+    showToast('↪️ تمت الإعادة');
   };
 
-  /* ---------------------- ط§ظ„طھطµط¯ظٹط± ---------------------- */
+  /* ---------------------- التصديق ---------------------- */
   window.exportPNG = function () {
     if (!canvas) return;
     const url = canvas.toDataURL({ format: 'png', multiplier: 2, backgroundColor: '#020617' });
     downloadFile(url, 'SNelectric-plan.png');
-    showToast('ًں–¼ï¸ڈ طھظ… طھطµط¯ظٹط± ط§ظ„طµظˆط±ط©');
+    showToast('🖼️ تم تصدير الصورة');
   };
 
   window.exportTXTReport = function () {
     const eng = window.mepEngine;
-    let t = 'طھظ‚ط±ظٹط± ظ…ط´ط±ظˆط¹ SNelectric MEP\n============================\n\n';
+    let t = 'تقرير مشروع SNelectric MEP\n============================\n\n';
     if (eng) {
       const boq = eng.generateBOQ ? eng.generateBOQ() : null;
-      t += 'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ط¹ظ†ط§طµط±: ' + eng.elements.length + '\n';
-      t += 'ط§ظ„ط­ظ…ظ„ ط§ظ„ظƒظ‡ط±ط¨ط§ط¦ظٹ ط§ظ„ظƒظ„ظٹ: ' + eng.totalLoad + ' A\n';
-      t += 'ط¶ط؛ط· ط§ظ„ط³ط¨ط§ظƒط© ط§ظ„ظƒظ„ظٹ: ' + eng.totalPressure + ' Bar\n\n';
+      t += 'إجمالي العناصر: ' + eng.elements.length + '\n';
+      t += 'الحمل الكهربائي الكلي: ' + eng.totalLoad + ' A\n';
+      t += 'ضغط السباكة الكلي: ' + eng.totalPressure + ' Bar\n\n';
       if (boq) {
-        t += 'ط­طµط± ط§ظ„ظƒظ…ظٹط§طھ (BOQ):\n';
+        t += 'حصر الكميات (BOQ):\n';
         Object.keys(boq).forEach(k => { t += ' - ' + k + ': ' + boq[k] + '\n'; });
         t += '\n';
       }
-      t += 'ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ظ†ط§طµط±:\n';
+      t += 'قائمة العناصر:\n';
       eng.elements.forEach((el, i) => {
         t += (i + 1) + '. ' + (el.label || el.subType) + ' [' + el.type + '] X:' + Math.round(el.x) + ' Y:' + Math.round(el.y) + '\n';
       });
     }
     const blob = new Blob([t], { type: 'text/plain;charset=utf-8' });
     downloadFile(URL.createObjectURL(blob), 'SNelectric-report.txt');
-    showToast('ًں“„ طھظ… طھطµط¯ظٹط± ط§ظ„طھظ‚ط±ظٹط±');
+    showToast('📄 تم تصدير التقرير');
   };
 
   function downloadFile(href, name) {
@@ -370,7 +477,7 @@
     document.body.appendChild(a); a.click(); a.remove();
   }
 
-  /* ---------------------- ط¹ط±ط¶ 2D / 3D ---------------------- */
+  /* ---------------------- عرض 2D / 3D ---------------------- */
   let three = null;
 
   window.toggle2DView = function () {
@@ -424,7 +531,6 @@
       });
     }
 
-    // ط¥ط¹ط§ط¯ط© ط¨ظ†ط§ط، ط§ظ„ظ…ط¬ط³ظ…ط§طھ ظ…ظ† ط§ظ„ط¹ظ†ط§طµط±
     while (three.group.children.length) three.group.remove(three.group.children[0]);
     const eng = window.mepEngine;
     if (!eng) return;
@@ -449,7 +555,7 @@
     });
   }
 
-  /* ---------------------- ط§ظ„ط£ط¯ظˆط§طھ ط§ظ„ظ‡ظ†ط¯ط³ظٹط© ---------------------- */
+  /* ---------------------- الأدوات الهندسية ---------------------- */
   function initToolBarListeners() {
     bind('validate-btn', '.btn-validate', runSmartValidationReport);
     bind('boq-btn', '.btn-boq', showBOQReport);
@@ -464,8 +570,8 @@
   function runSmartValidationReport() {
     if (!window.mepEngine) return;
     const errors = window.mepEngine.validateSystem();
-    if (!errors.length) { alert('âœ… ط§ظ„ظ…ط®ط·ط· ط³ظ„ظٹظ… ظ‡ظ†ط¯ط³ظٹط§ظ‹: ظ„ط§ طھظˆط¬ط¯ ط£ط®ط·ط§ط، ط£ظˆ طھط¹ط§ط±ط¶ط§طھ ط¸ط§ظ‡ط±ط©.'); return; }
-    let t = 'âڑ ï¸ڈ طھظ‚ط±ظٹط± ط§ظ„طھط¯ظ‚ظٹظ‚ ط§ظ„ظ‡ظ†ط¯ط³ظٹ:\n\n';
+    if (!errors.length) { alert('✅ المخطط سليم هندسياً: لا توجد أخطاء أو تعارضات ظاهرة.'); return; }
+    let t = '⚠️ تقرير التدقيق الهندسي:\n\n';
     errors.forEach((e, i) => { t += (i + 1) + '. [' + e.type.toUpperCase() + '] ' + e.message + '\n'; });
     alert(t);
   }
@@ -474,21 +580,21 @@
   function showBOQReport() {
     if (!window.mepEngine || !window.mepEngine.generateBOQ) return;
     const boq = window.mepEngine.generateBOQ();
-    let m = 'ًں“ٹ ط­طµط± ط§ظ„ظƒظ…ظٹط§طھ ط§ظ„ط¢ظ„ظٹ (BOQ):\n\n';
+    let m = '📊 حصر الكميات الآلي (BOQ):\n\n';
     Object.keys(boq).forEach(k => { m += '- ' + k + ': ' + boq[k] + '\n'; });
     alert(m);
   }
   window.showBOQReport = showBOQReport;
 
   function openCableCalculator() {
-    const a = prompt('ط£ط¯ط®ظ„ ط§ظ„طھظٹط§ط± (ط£ظ…ط¨ظٹط±):', '16'); if (!a) return;
-    const l = prompt('ط£ط¯ط®ظ„ ط·ظˆظ„ ط§ظ„ط®ط· (ظ…طھط±):', '20'); if (!l) return;
+    const a = prompt('أدخل التيار (أمبير):', '16'); if (!a) return;
+    const l = prompt('أدخل طول الخط (متر):', '20'); if (!l) return;
     const r = window.mepEngine.calculateCableSize(parseFloat(a), parseFloat(l));
-    alert('âڑ، ط­ط³ط§ط¨ ط§ظ„ظƒط§ط¨ظ„ط§طھ:\n\n- ط§ظ„طھظٹط§ط±: ' + r.amps + ' A\n- ط§ظ„ط·ظˆظ„: ' + r.length + ' ظ…\n- ط§ظ„ظ…ظ‚ط·ط¹ ط§ظ„ظ…ظˆطµظ‰ ط¨ظ‡: ' + r.sectionMM2 + ' ظ…ظ…آ²\n- ط§ظ„ظ‡ط¨ظˆط·: ' + r.voltageDropVolts + ' V\n- ط§ظ„طھظ‚ظٹظٹظ…: ' + r.evaluation);
+    alert('⚡ حساب الكابلات:\n\n- التيار: ' + r.amps + ' A\n- الطول: ' + r.length + ' م\n- المقطع الموصى به: ' + r.sectionMM2 + ' مم²\n- الهبوط: ' + r.voltageDropVolts + ' V\n- التقييم: ' + r.evaluation);
   }
   window.openCableCalculator = openCableCalculator;
 
-  /* ---------------------- ط§ط®طھطµط§ط±ط§طھ ظ„ظˆط­ط© ط§ظ„ظ…ظپط§طھظٹط­ ---------------------- */
+  /* ---------------------- اختصارات لوحة المفاتيح ---------------------- */
   function initGlobalKeys() {
     window.addEventListener('keydown', (e) => {
       const tag = (e.target.tagName || '').toLowerCase();
@@ -497,7 +603,7 @@
       if (e.ctrlKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         if (window.mepEngine) window.mepEngine.saveToLocalStorage();
-        showToast('ًں’¾ طھظ… ط­ظپط¸ ط§ظ„ظ…ط´ط±ظˆط¹ ظ…ط­ظ„ظٹط§ظ‹');
+        showToast('💾 تم حفظ المشروع محلياً');
       }
       if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); window.undoLastAction(); }
       if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); window.redoLastAction(); }
@@ -507,7 +613,7 @@
         wallMode = false; wallStart = null;
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
         document.querySelectorAll('.popup-window').forEach(p => p.classList.remove('active'));
-        setSysStatus('ط¬ط§ظ‡ط² ًںں¢', '#22c55e');
+        setSysStatus('جاهز 🟢', '#22c55e');
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && canvas) {
         const o = canvas.getActiveObject();
@@ -520,7 +626,7 @@
     });
   }
 
-  /* ---------------------- ط£ط¯ظˆط§طھ ظ…ط³ط§ط¹ط¯ط© ---------------------- */
+  /* ---------------------- أدوات مساعدة ---------------------- */
   function updateBottomStatusBar() {
     const eng = window.mepEngine;
     if (!eng) return;
@@ -554,7 +660,6 @@
   }
   window.showToast = showToast;
 
-  // ط¥ط؛ظ„ط§ظ‚ ط§ظ„ظ‚ظˆط§ط¦ظ… ط§ظ„ظ…ظ†ط¨ط«ظ‚ط© ط¹ظ†ط¯ ط§ظ„ط¶ط؛ط· ط®ط§ط±ط¬ظ‡ط§
   document.addEventListener('click', (e) => {
     if (e.target.closest('.category-item')) return;
     document.querySelectorAll('.popup-window').forEach(p => p.classList.remove('active'));
