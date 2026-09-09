@@ -232,7 +232,7 @@ class MEPEngineMaster {
       else if (label.includes('باب') || label.includes('شباك') || obj.type === 'carpentry') boq.doorsAndWindows++;
       else if (label.includes('حوض') || label.includes('قاعدة') || label.includes('بالوعة') || obj.type === 'plumbing') boq.sanitaryFixtures++;
       else if (obj.type === 'wall') boq.wallsTotalLengthMeters += (obj.width || 100) / 50;
-      else if (obj.type === 'furniture') boq.furnitureCount++;
+      else if (obj.type === 'furniture' || obj.type === 'appliance') boq.furnitureCount++;
     });
 
     return boq;
