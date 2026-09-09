@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>S⚡N Electric MEP Engine v3.98 - المولد المعماري والمحاكاة الذكية</title>
+    <title>S⚡N Electric MEP Engine v3.99 - المولد المعماري والمحاكاة الذكية الشاملة</title>
 
     <!-- ربط المانفيست والخطوط -->
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
 
-    <!-- CSS الشاشة الافتتاحية والأنماط الهيكلية -->
+    <!-- CSS الشاشة الافتتاحية والأنماط الهيكلية المدمجة -->
     <style>
         :root {
             --bg-topbar: rgba(15, 23, 42, 0.85);
@@ -17,27 +17,45 @@
             --btn-bg: rgba(255, 255, 255, 0.1);
             --btn-text: #ffffff;
             --bg-sidebar: rgba(15, 23, 42, 0.95);
+            --accent-color: #00f2fe;
+            --border-color: rgba(255, 255, 255, 0.15);
         }
 
-        /* 1- البار العلوي أبيض والأزرار ملونة والقائمة الجانبية بيضاء */
+        /* 1- الثيم الفاتح: بار علوي أبيض وأزرار ملونة وقائمة بيضاء */
         body.theme-light {
             --bg-topbar: #ffffff;
             --text-topbar: #000000;
             --btn-bg: #2563eb;
             --btn-text: #ffffff;
             --bg-sidebar: #ffffff;
+            --border-color: rgba(0, 0, 0, 0.15);
         }
 
-        /* 2- البار العلوي أسود والأزرار بيضاء والقائمة الجانبية سوداء */
+        /* 2- الثيم الداكن: بار علوي أسود وأزرار بيضاء وقائمة سوداء */
         body.theme-dark {
             --bg-topbar: #000000;
             --text-topbar: #ffffff;
             --btn-bg: #ffffff;
             --btn-text: #000000;
             --bg-sidebar: #0a0a0a;
+            --border-color: rgba(255, 255, 255, 0.2);
         }
 
-        /* الشاشة الافتتاحية */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* الشاشة الافتتاحية الاحترافية */
         #splash-screen {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -125,7 +143,170 @@
         .splash-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
         .hidden { display: none !important; }
 
-        /* تصميم الشريط السفلي المكون من 7 مربعات */
+        /* الشريط العلوي */
+        .top-bar {
+            height: 50px;
+            background: var(--bg-topbar);
+            color: var(--text-topbar);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(8px);
+            z-index: 1001;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 900;
+        }
+
+        .glass-btn {
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: 1px solid var(--border-color);
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .glass-btn:hover {
+            background: rgba(0, 242, 254, 0.2);
+            border-color: #00f2fe;
+        }
+
+        .glass-btn.active {
+            background: #00f2fe;
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* هيكل التطبيق الأساسي */
+        .app-layout {
+            display: flex;
+            width: 100vw;
+            height: calc(100vh - 50px - 48px);
+            position: relative;
+        }
+
+        /* القائمة الجانبية المتقدمة */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            backdrop-filter: blur(12px);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(100%);
+            position: absolute;
+            right: 0;
+            height: 100%;
+        }
+
+        .sidebar-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .sidebar-scroll-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* عناصر القوائم المنسدلة داخل الشريط الجانبي */
+        .category-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .category-title-btn {
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 8px 10px;
+            text-align: right;
+            color: inherit;
+            font-family: 'Cairo', sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-title-btn:hover {
+            background: rgba(0, 242, 254, 0.1);
+        }
+
+        .popup-window {
+            display: none;
+            padding: 6px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid var(--border-color);
+            gap: 4px;
+            flex-direction: column;
+        }
+
+        .popup-window.show {
+            display: flex;
+        }
+
+        .popup-window button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: inherit;
+            padding: 6px 8px;
+            text-align: right;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-family: 'Cairo', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .popup-window button:hover {
+            background: rgba(0, 242, 254, 0.2);
+            color: #00f2fe;
+        }
+
+        /* تصميم الشريط السفلي المكون من 7 مربعات تفاعلية */
         .bottom-console-grid {
             position: fixed;
             bottom: 0; left: 0; right: 0;
@@ -183,6 +364,39 @@
             color: #22c55e;
         }
 
+        /* نوافذ الحوار (Modals) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200000;
+        }
+
+        .modal-box {
+            width: 380px !important;
+            background: rgba(15, 23, 42, 0.95) !important;
+            border: 1px solid rgba(0, 242, 254, 0.4) !important;
+        }
+
+        .modal-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00f2fe;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            justify-content: flex-end;
+        }
+
         body.theme-light .sidebar { background: var(--bg-sidebar); color: #000000; }
         body.theme-dark .sidebar { background: var(--bg-sidebar); color: #ffffff; }
     </style>
@@ -222,11 +436,11 @@
     <input type="file" id="fileInputJSON" accept=".json" style="display: none;" />
 
     <!-- الشريط العلوي الرئيسي -->
-    <header class="top-bar" style="background: var(--bg-topbar); color: var(--text-topbar);">
+    <header class="top-bar">
         <div class="brand">
             <button type="button" class="glass-btn" onclick="window.toggleSidebar()" style="padding: 4px 10px; font-size: 16px;">☰</button>
             <span class="logo-sn" style="color: #ff3344;">S</span><span class="logo-bolt">⚡</span><span class="logo-sn" style="color: #0088ff;">N</span>
-            <span style="font-size:12px; color:#f5b813; margin-right: 6px; font-weight: bold;">MEP v3.98</span>
+            <span style="font-size:12px; color:#f5b813; margin-right: 6px; font-weight: bold;">MEP v3.99</span>
         </div>
 
         <div class="top-actions" style="display: flex; gap: 6px; align-items: center;">
@@ -242,7 +456,7 @@
     </header>
 
     <div class="app-layout">
-        <main class="canvas-container-wrapper" style="position: relative; flex: 1; height: calc(100vh - 98px); overflow: hidden;">
+        <main class="canvas-container-wrapper" style="position: relative; flex: 1; height: 100%; overflow: hidden;">
             <div id="canvas2DContainer" style="width: 100%; height: 100%; position: absolute; top:0; left:0;">
                 <canvas id="mepCanvas"></canvas>
                 <div id="wallCutoutOverlay" class="wall-cutout-layer" style="position: absolute; pointer-events: none; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;"></div>
@@ -254,7 +468,7 @@
             </div>
         </main>
 
-        <!-- الشريط الجانبي للأدوات والمكتبات (شامل كافة خيارات القائمتين) -->
+        <!-- الشريط الجانبي للأدوات والمكتبات -->
         <aside class="sidebar collapsed" id="sidebarMenu">
             <div class="sidebar-header">
                 <span>قائمة العناصر والأدوات</span>
@@ -263,8 +477,8 @@
 
             <div class="sidebar-scroll-content">
 
-                <!-- ⚙️ ترويسة الإعدادات واختيار النمط -->
-                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(0,242,254,0.3);">
+                <!-- ⚙️ إعدادات النمط والشبكة -->
+                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,242,254,0.3);">
                     <div style="font-size: 13px; font-weight: bold; color: #f5b813; margin-bottom: 8px;">⚙️ إعدادات النمط والشبكة</div>
                     
                     <div style="margin-bottom: 8px;">
@@ -294,7 +508,7 @@
                 </div>
 
                 <!-- تخصيص المسمى -->
-                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
                     <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">تخصيص العنصر / المسمى</div>
                     <input type="text" id="shapeLabelInput" placeholder="أدخل اسم العنصر..." style="width: 100%; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px; margin-bottom: 6px;">
                     <label style="font-size: 11px; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
@@ -342,9 +556,6 @@
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'بريزة قوى')"><span class="icon">⚡</span> بريزة قوى (⚙️)</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح سخان')"><span class="icon">♨️</span> مفتاح سخان (20A)</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح تكييف')"><span class="icon">❄️</span> مفتاح تكييف (32A)</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح أحادى')"><span class="icon">1️⃣</span> مفتاح أحادى (S₁)</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح ثنائى')"><span class="icon">2️⃣</span> مفتاح ثنائى (S₂)</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('electrical', 'مفتاح ثلاثى')"><span class="icon">3️⃣</span> مفتاح ثلاثى (S₃)</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('power', 'بار أرضى')"><span class="icon">⏚</span> بار أرضى (Earth Bar)</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('power', 'L1,L2,L3')"><span class="icon">📦</span> L1,L2,L3</button>
                     </div>
@@ -359,12 +570,11 @@
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'دش')"><span class="icon">🚿</span> دش</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'قاعدة حمام')"><span class="icon">🚽</span> قاعدة حمام</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'بالوعة')"><span class="icon">🕳️</span> بالوعة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'بير صرف عمومى')"><span class="icon">⭕</span> بير صرف عمومى</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('plumbing', 'بانيو')"><span class="icon">🛁</span> بانيو</button>
                     </div>
                 </div>
 
-                <!-- 5. أثاث -->
+                <!-- 5. أثاث وأجهزة -->
                 <div class="category-item">
                     <button type="button" class="category-title-btn" onclick="window.togglePopup('furnitureSec', event)">🛋️ اثاث ▾</button>
                     <div class="popup-window" id="furnitureSec">
@@ -372,18 +582,14 @@
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'سرير أطفال')"><span class="icon">🛏️</span> سرير أطفال</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كومدينو')"><span class="icon">🔲</span> كومدينو</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'تربيزة سفرة')"><span class="icon">🍽️</span> تربيزة سفرة</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كرسي خشب')"><span class="icon">🪑</span> كرسي خشب</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كنبة انتريه')"><span class="icon">🛋️</span> كنبة انتريه</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('furniture', 'كرسي انتريه')"><span class="icon">💺</span> كرسي انتريه</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'سخان مياه')"><span class="icon">🔥</span> سخان مياه</button>
                         <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'بوتاجاز')"><span class="icon">🍳</span> بوتاجاز</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'غسالة أطباق')"><span class="icon">🍽️</span> غسالة أطباق</button>
-                        <button type="button" onclick="window.addCatalogItem && window.addCatalogItem('appliance', 'غسالة أوتوماتيك')"><span class="icon">🧺</span> غسالة أوتوماتيك</button>
                     </div>
                 </div>
 
-                <!-- إضافة نص حر على المخطط -->
-                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-top: 10px;">
+                <!-- إضافة نص حر -->
+                <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
                     <div style="font-size: 12px; font-weight: bold; color: #00f2fe; margin-bottom: 6px;">إضافة نص حر على المخطط</div>
                     <div style="display: flex; gap: 4px;">
                         <input type="text" id="freeTextInput" placeholder="اكتب ملاحظة..." style="flex:1; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px;">
@@ -395,7 +601,7 @@
         </aside>
     </div>
 
-    <!-- 📊 الشريط السفلي الجديد (مكون من 7 مربعات تفاعلية) -->
+    <!-- 📊 الشريط السفلي المكون من 7 مربعات تفاعلية -->
     <div class="bottom-console-grid">
         <div class="console-box active-snap" id="boxSnapToggle" onclick="window.toggleSnapInBar()">
             <span class="box-title">🧲 الانجذاب</span>
@@ -433,11 +639,11 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- نافذة أبعاد الغرفة -->
     <div class="modal-overlay hidden" id="roomDimensionModal">
         <div class="glass-card modal-box">
             <div class="modal-title">🏠 تحديد أبعاد المساحة والمعمارية</div>
-            <div class="modal-inputs">
+            <div class="modal-inputs" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
                 <div style="font-size: 13px; color: #cbd5e1; font-weight: 600;">
                     المساحة: <span id="modalRoomName" style="color: #00f2fe; font-weight: bold;">غرفة</span>
                 </div>
@@ -459,7 +665,37 @@
         </div>
     </div>
 
-    <!-- دوال التغيير والتفاعل -->
+    <!-- نافذة أبعاد وعمق العنصر المتقدمة (3D / Z) -->
+    <div class="modal-overlay hidden" id="objectDimensionModal">
+        <div class="glass-card modal-box">
+            <div class="modal-title">📐 تعديل أبعاد العنصر</div>
+            <div class="modal-inputs" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                <div style="font-size: 12px; color: #cbd5e1; font-weight: 600;">
+                    العنصر الحالي: <span id="targetObjectName" style="color: #00f2fe; font-weight: bold;">-</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <div style="flex:1;">
+                        <label style="font-size:11px; color:#00f2fe;">العرض (W - mm):</label>
+                        <input type="number" id="objWidthInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:11px; color:#00f2fe;">الطول 2D (H - mm):</label>
+                        <input type="number" id="objHeightInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:11px; color:#00f2fe;">الارتفاع 3D (Z - mm):</label>
+                        <input type="number" id="objDepthInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="glass-btn" onclick="window.closeObjectDimModal && window.closeObjectDimModal()">إلغاء</button>
+                <button type="button" class="glass-btn btn-primary" onclick="window.applyObjectDimensions && window.applyObjectDimensions()">تطبيق الأبعاد 📐</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- دوال التفاعل الأساسية للواجهة -->
     <script>
         window.changeAppTheme = function(theme) {
             document.body.className = '';
@@ -490,40 +726,25 @@
                 window.toggleSnap(isSnapEnabled);
             }
         };
+
+        window.togglePopup = function(id, event) {
+            if (event) event.stopPropagation();
+            const popup = document.getElementById(id);
+            if (popup) {
+                popup.classList.toggle('show');
+            }
+        };
+
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebarMenu');
+            if (sidebar) {
+                sidebar.classList.toggle('collapsed');
+            }
+        };
     </script>
 
-    <!-- المحركات الخارجية -->
+    <!-- ربط المحركات البرمجية الخارجية -->
     <script src="mep_engine.js"></script>
-   
-    <!-- Modal تغيير أبعاد العنصر (شامل حقل Z المتقدم) -->
-    <div class="modal-overlay hidden" id="objectDimensionModal">
-        <div class="glass-card modal-box">
-            <div class="modal-title">📐 تعديل أبعاد العنصر</div>
-            <div class="modal-inputs" style="display: flex; flex-direction: column; gap: 10px;">
-                <div style="font-size: 12px; color: #cbd5e1; font-weight: 600;">
-                    العنصر الحالي: <span id="targetObjectName" style="color: #00f2fe; font-weight: bold;">-</span>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div style="flex:1;">
-                        <label style="font-size:11px; color:#00f2fe;">العرض (W - mm):</label>
-                        <input type="number" id="objWidthInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
-                    </div>
-                    <div style="flex:1;">
-                        <label style="font-size:11px; color:#00f2fe;">الطول / الارتفاع 2D (H - mm):</label>
-                        <input type="number" id="objHeightInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
-                    </div>
-                    <div style="flex:1;">
-                        <label style="font-size:11px; color:#00f2fe;">الارتفاع 3D (Z - mm):</label>
-                        <input type="number" id="objDepthInput" min="1" style="width:100%; padding:6px; background:#000; color:#fff; border:1px solid #333; border-radius:4px; text-align:center;">
-                    </div>
-                </div>
-            </div>
-            <div class="modal-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" class="glass-btn" onclick="closeObjectDimModal()">إلغاء</button>
-                <button type="button" class="glass-btn btn-primary" onclick="applyObjectDimensions()">تطبيق الأبعاد 📐</button>
-            </div>
-        </div>
-    </div>
     <script src="script.js"></script>
 </body>
 </html>
