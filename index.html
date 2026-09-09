@@ -435,7 +435,7 @@
     <!-- مدخل قراءة ملفات JSON -->
     <input type="file" id="fileInputJSON" accept=".json" style="display: none;" />
 
-    <!-- الشريط العلوي الرئيسي -->
+    <!-- الشريط العلوي الرئيسي (مصحح الأوسام والتنسيق) -->
     <header class="top-bar">
         <div class="brand">
             <button type="button" class="glass-btn" onclick="window.toggleSidebar()" style="padding: 4px 10px; font-size: 16px;">☰</button>
@@ -444,8 +444,6 @@
         </div>
 
         <div class="top-actions" style="display: flex; gap: 6px; align-items: center;">
-            <button type="button" id="btnDuplicateActive" class="glass-btn" onclick="window.duplicateActiveObject()" title="نسخ العنصر المحدد (Copy)">📋 نسخ</button>
-            <button type="button" id="btnDeleteActive" class="glass-btn" onclick="window.deleteActiveObject()" title="حذف العنصر المحدد (Delete)" style="color: #ff3344; border-color: rgba(255,51,68,0.4);">🗑️ حذف</button>
             <button type="button" id="btnView3D" class="glass-btn" onclick="window.toggle3DView()" title="عرض 3D">🧊 3D</button>
             <button type="button" id="btnView2D" class="glass-btn active" onclick="window.toggle2DView()" title="عرض 2D">📐 2D</button>
             <button type="button" id="btnSave" class="glass-btn" onclick="window.exportPNG()" title="تصدير صورة">🖼️ صورة</button>
@@ -695,8 +693,18 @@
         </div>
     </div>
 
-    <!-- دوال التفاعل الأساسية للواجهة -->
+    <!-- دوال التفاعل الأساسية للواجهة وإغلاق الشاشة الافتتاحية -->
     <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.classList.add('splash-hidden');
+                    setTimeout(() => splash.remove(), 800);
+                }
+            }, 3500);
+        });
+
         window.changeAppTheme = function(theme) {
             document.body.className = '';
             if (theme === 'light') {
@@ -740,6 +748,11 @@
             if (sidebar) {
                 sidebar.classList.toggle('collapsed');
             }
+        };
+
+        window.closeRoomModal = function() {
+            const modal = document.getElementById('roomDimensionModal');
+            if (modal) modal.classList.add('hidden');
         };
     </script>
 
