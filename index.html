@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>S⚡N Electric MEP Engine v3.5 - المولد المعماري والمحاكاة الذكية</title>
+    <title>S⚡N Electric MEP Engine v3.98 - المولد المعماري والمحاكاة الذكية</title>
 
     <!-- ربط المانفيست والخطوط -->
     <link rel="manifest" href="manifest.json">
@@ -221,15 +221,17 @@
     <!-- مدخل قراءة ملفات JSON -->
     <input type="file" id="fileInputJSON" accept=".json" style="display: none;" />
 
-    <!-- الشريط العلوي الرئيسي (3D, 2D, صورة, تقرير, تراجع, اللاحق) -->
+    <!-- الشريط العلوي الرئيسي -->
     <header class="top-bar" style="background: var(--bg-topbar); color: var(--text-topbar);">
         <div class="brand">
             <button type="button" class="glass-btn" onclick="window.toggleSidebar()" style="padding: 4px 10px; font-size: 16px;">☰</button>
             <span class="logo-sn" style="color: #ff3344;">S</span><span class="logo-bolt">⚡</span><span class="logo-sn" style="color: #0088ff;">N</span>
-            <span style="font-size:12px; color:#f5b813; margin-right: 6px; font-weight: bold;">MEP v3.5</span>
+            <span style="font-size:12px; color:#f5b813; margin-right: 6px; font-weight: bold;">MEP v3.98</span>
         </div>
 
-        <div class="top-actions" style="display: flex; gap: 6px;">
+        <div class="top-actions" style="display: flex; gap: 6px; align-items: center;">
+            <button type="button" id="btnDuplicateActive" class="glass-btn" onclick="window.duplicateActiveObject()" title="نسخ العنصر المحدد (Copy)">📋 نسخ</button>
+            <button type="button" id="btnDeleteActive" class="glass-btn" onclick="window.deleteActiveObject()" title="حذف العنصر المحدد (Delete)" style="color: #ff3344; border-color: rgba(255,51,68,0.4);">🗑️ حذف</button>
             <button type="button" id="btnView3D" class="glass-btn" onclick="window.toggle3DView()" title="عرض 3D">🧊 3D</button>
             <button type="button" id="btnView2D" class="glass-btn active" onclick="window.toggle2DView()" title="عرض 2D">📐 2D</button>
             <button type="button" id="btnSave" class="glass-btn" onclick="window.exportPNG()" title="تصدير صورة">🖼️ صورة</button>
@@ -243,6 +245,7 @@
         <main class="canvas-container-wrapper" style="position: relative; flex: 1; height: calc(100vh - 98px); overflow: hidden;">
             <div id="canvas2DContainer" style="width: 100%; height: 100%; position: absolute; top:0; left:0;">
                 <canvas id="mepCanvas"></canvas>
+                <div id="wallCutoutOverlay" class="wall-cutout-layer" style="position: absolute; pointer-events: none; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;"></div>
             </div>
             <div id="canvas3DContainer" style="width: 100%; height: 100%; position: absolute; top:0; left:0; display: none; background: #020617;">
                 <div style="position: absolute; top: 15px; right: 15px; z-index: 10; background: rgba(15,23,42,0.8); padding: 8px 12px; border-radius: 8px; color: #00f2fe; border: 1px solid #00f2fe; font-size: 12px; backdrop-filter: blur(4px);">
@@ -251,7 +254,7 @@
             </div>
         </main>
 
-        <!-- الشريط الجانبي للأدوات والمكتبات -->
+        <!-- الشريط الجانبي للأدوات والمكتبات (شامل كافة خيارات القائمتين) -->
         <aside class="sidebar collapsed" id="sidebarMenu">
             <div class="sidebar-header">
                 <span>قائمة العناصر والأدوات</span>
@@ -264,7 +267,6 @@
                 <div class="panel-section" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(0,242,254,0.3);">
                     <div style="font-size: 13px; font-weight: bold; color: #f5b813; margin-bottom: 8px;">⚙️ إعدادات النمط والشبكة</div>
                     
-                    <!-- إعداد وضع التطبيق -->
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 11px; color: #cbd5e1; display: block; margin-bottom: 4px;">وضع التطبيق (الثيم):</label>
                         <select id="appThemeSelect" onchange="window.changeAppTheme(this.value)" style="width: 100%; padding: 6px; border-radius: 6px; background: #000; color: #fff; border: 1px solid #333; font-size: 11px;">
@@ -274,13 +276,11 @@
                         </select>
                     </div>
 
-                    <!-- إعداد لون خطوط الشبكة -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <label style="font-size: 11px; color: #cbd5e1;">لون خطوط الشبكة:</label>
                         <input type="color" id="gridColorPicker" value="#334155" onchange="window.updateGridColor && window.updateGridColor(this.value)">
                     </div>
 
-                    <!-- إعدادات المقياس والشبكة -->
                     <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label>المقياس (1px = mm):</label>
@@ -397,43 +397,36 @@
 
     <!-- 📊 الشريط السفلي الجديد (مكون من 7 مربعات تفاعلية) -->
     <div class="bottom-console-grid">
-        <!-- مربع 1: زر الانجذاب للشبكة الضغاط -->
         <div class="console-box active-snap" id="boxSnapToggle" onclick="window.toggleSnapInBar()">
             <span class="box-title">🧲 الانجذاب</span>
             <span class="box-value" id="valSnapStatus">مفعل 🟢</span>
         </div>
 
-        <!-- مربع 2: الإحداثيات -->
         <div class="console-box">
             <span class="box-title">📍 الإحداثيات (X, Y)</span>
             <span class="box-value">X:<span id="statX">0</span> Y:<span id="statY">0</span></span>
         </div>
 
-        <!-- مربع 3: العرض المحدد W -->
         <div class="console-box">
             <span class="box-title">📏 العرض المحدد</span>
             <span class="box-value">W: <span id="statW">0</span> mm</span>
         </div>
 
-        <!-- مربع 4: الطول المحدد H -->
         <div class="console-box">
             <span class="box-title">📐 الطول المحدد</span>
             <span class="box-value">H: <span id="statH">0</span> mm</span>
         </div>
 
-        <!-- مربع 5: الحمل الكهربائي Total Load -->
         <div class="console-box">
             <span class="box-title">⚡ الحمل الكهربائي</span>
             <span class="box-value" id="total-load-text" style="color: #f5b813;">0.00 A / 0.0 kW</span>
         </div>
 
-        <!-- مربع 6: ضغط السباكة Plumbing Pressure -->
         <div class="console-box">
             <span class="box-title">🚰 ضغط السباكة</span>
             <span class="box-value" id="total-pressure-text" style="color: #38bdf8;">0.0 Bar</span>
         </div>
 
-        <!-- مربع 7: حالة النظام System Status -->
         <div class="console-box">
             <span class="box-title">🖥️ حالة النظام</span>
             <span class="box-value" id="sys-status-text" style="color: #22c55e;">جاهز 🟢</span>
@@ -468,7 +461,6 @@
 
     <!-- دوال التغيير والتفاعل -->
     <script>
-        // تغيير ثيم التطبيق بين الأنماط الثلاثة
         window.changeAppTheme = function(theme) {
             document.body.className = '';
             if (theme === 'light') {
@@ -480,7 +472,6 @@
             }
         };
 
-        // تفعيل وإيقاف الانجذاب من المربع الأول بالبار السفلي
         let isSnapEnabled = true;
         window.toggleSnapInBar = function() {
             isSnapEnabled = !isSnapEnabled;
@@ -504,7 +495,7 @@
     <!-- المحركات الخارجية -->
     <script src="mep_engine.js"></script>
    
-    <!-- Modal تغيير أبعاد العنصر (T) -->
+    <!-- Modal تغيير أبعاد العنصر (شامل حقل Z المتقدم) -->
     <div class="modal-overlay hidden" id="objectDimensionModal">
         <div class="glass-card modal-box">
             <div class="modal-title">📐 تعديل أبعاد العنصر</div>
