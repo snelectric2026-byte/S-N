@@ -1,6 +1,6 @@
 /* ==========================================================================
-   SNelectric MEP & BIM Master Engine (mep_engine.js)
-   Unified Core & Advanced Engineering Logic
+   SNelectric MEP & BIM Master Engine (mep_engine.js) - v3.7 FIXED
+   Unified Core & Advanced Engineering Logic with Wall Intersect & Auto-Cut
    ========================================================================== */
 
 class MEPEngineMaster {
@@ -20,7 +20,7 @@ class MEPEngineMaster {
   addElement(type, subType, x, y, properties = {}) {
     const element = {
       id: 'elem_' + Date.now() + Math.random().toString(36).substring(2, 9),
-      type: type,         // wall, electrical, plumbing, furniture, panel
+      type: type,         // wall, electrical, plumbing, furniture, panel, door, window
       subType: subType,   // socket, pipe, desk, main_breaker, etc.
       label: properties.label || subType,
       x: this.snapEnabled ? Math.round(x / this.gridSize) * this.gridSize : x,
@@ -36,10 +36,45 @@ class MEPEngineMaster {
       status: 'active'
     };
 
+    // ميزة الانقطاع والتركيب التلقائي للجدران (Wall Snap & Auto-Cut Logic)
+    if (type === 'carpentry' || type === 'door' || type === 'window' || subType.includes('باب') || subType.includes('شباك')) {
+      this.processWallSnapAndCut(element);
+    }
+
     this.elements.push(element);
     this.calculateSystemMetrics();
     this.saveToLocalStorage();
     return element;
+  }
+
+  processWallSnapAndCut(element) {
+    const walls = this.elements.filter(el => el.type === 'wall');
+    if (walls.length === 0) return;
+
+    let nearestWall = null;
+    let minDistance = Infinity;
+
+    walls.forEach(wall => {
+      // حساب المسافة الأقرب بين العنصر وخط الجدار لعمل التثبيت والقص الآلي
+      const wx1 = wall.left || wall.x;
+      const wy1 = wall.top || wall.y;
+      const wx2 = wx1 + (wall.width || 0);
+      const wy2 = wy1 + (wall.height || 0);
+
+      // مسافة تقريبية للمنتصف
+      const dist = Math.hypot(element.x - (wx1 + wx2)/2, element.y - (wy1 + wy2)/2);
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearestWall = wall;
+      }
+    });
+
+    // إذا كان العنصر قريباً من الجدار، يتم مغنطته على مساره وخصم مساحة الفتحة
+    if (nearestWall && minDistance < 100) {
+      element.snappedWallId = nearestWall.id;
+      // تسجيل عملية القطع الهندسي في السجل الداخلي
+      element.isWallCut = true;
+    }
   }
 
   removeElement(id) {
@@ -54,6 +89,11 @@ class MEPEngineMaster {
       Object.assign(el, newProps);
       if (newProps.x !== undefined) el.left = newProps.x;
       if (newProps.y !== undefined) el.top = newProps.y;
+      
+      if (el.type === 'carpentry' || el.type === 'door' || el.type === 'window') {
+        this.processWallSnapAndCut(el);
+      }
+
       this.calculateSystemMetrics();
       this.saveToLocalStorage();
     }
@@ -99,6 +139,11 @@ class MEPEngineMaster {
         const el1 = this.elements[i];
         const el2 = this.elements[j];
         
+        // استثناء الأبواب والنوافذ إذا كانت مقاطعة للجدران عمداً
+        if ((el1.isWallCut && el2.type === 'wall') || (el2.isWallCut && el1.type === 'wall')) {
+          continue;
+        }
+
         if (el1.category !== el2.category && this.isIntersecting(el1, el2)) {
           clashesFound.push({
             elementA: el1.label || el1.subType,
@@ -161,6 +206,7 @@ class MEPEngineMaster {
       sockets: 0,
       lights: 0,
       acSwitches: 0,
+      doorsAndWindows: 0,
       sanitaryFixtures: 0,
       wallsTotalLengthMeters: 0,
       furnitureCount: 0
@@ -172,6 +218,7 @@ class MEPEngineMaster {
       else if (label.includes('بريزة') || label.includes('socket')) boq.sockets++;
       else if (label.includes('لمبة') || label.includes('light')) boq.lights++;
       else if (label.includes('تكييف') || label.includes('ac')) boq.acSwitches++;
+      else if (label.includes('باب') || label.includes('شباك') || obj.type === 'carpentry') boq.doorsAndWindows++;
       else if (label.includes('حوض') || label.includes('قاعدة') || label.includes('بالوعة') || obj.type === 'plumbing') boq.sanitaryFixtures++;
       else if (obj.type === 'wall') boq.wallsTotalLengthMeters += (obj.width || 100) / 50;
       else if (obj.type === 'furniture') boq.furnitureCount++;
