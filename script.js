@@ -1,13 +1,12 @@
 /* ==========================================================================
-   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.95 MERGED MASTER
-   Unified UI, Undo/Redo Stack, Advanced Architectural Symbols, 3D Sync & Object Dimensions
+   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.96 FIXED MASTER
    ========================================================================== */
 
 (function () {
   'use strict';
 
-  let canvas = null;              // fabric canvas
-  let scaleMMperPX = 10;          // 1px = 10mm
+  let canvas = null;
+  let scaleMMperPX = 10;
   let gridStepMM = 100;
   let gridColor = '#334155';
   let snapEnabled = true;
@@ -82,13 +81,12 @@
         canvas.remove(tempWall);
         
         if (window.mepEngine) {
-          const wElem = window.mepEngine.addElement('wall', 'جدار', wallStart.x, wallStart.y, {
+          window.mepEngine.addElement('wall', 'جدار', wallStart.x, wallStart.y, {
             width: Math.abs(p.x - wallStart.x) || 100,
             height: Math.abs(p.y - wallStart.y) || 14,
             label: 'جدار (' + lenM.toFixed(1) + 'م)',
             wallHeight: 280
           });
-          reloadCanvasElements();
         }
         wallStart = null; tempWall = null;
         wallMode = false;
@@ -110,7 +108,12 @@
     });
 
     drawGrid();
-    reloadCanvasElements();
+    
+    // التحقق من وجود بيانات محفوظة محلياً لتحميلها بشكل صحيح بدون تداخل
+    if (window.mepEngine && typeof window.mepEngine.loadFromLocalStorage === 'function') {
+      window.mepEngine.loadFromLocalStorage();
+    }
+    
     pushUndo();
   }
 
@@ -171,7 +174,7 @@
     if (target) target.classList.toggle('active');
   };
 
-  /* ---------------------- مولد الرموز الهندسية المتقدمة ---------------------- */
+  /* ---------------------- مولد الرموز الهندسية ---------------------- */
   function createArchitecturalSymbol(subType, p) {
     const parts = [];
     if (subType === 'باب' || subType.includes('باب')) {
@@ -234,7 +237,7 @@
     return parts;
   }
 
-  /* ---------------------- الكتلوج وإضافة العناصر ---------------------- */
+  /* ---------------------- الكتالوج وإضافة العناصر ---------------------- */
   const PRESETS = {
     architectural: { w: 120, h: 90, fill: 'rgba(0,242,254,0.08)', stroke: '#00f2fe' },
     carpentry:     { w: 80,  h: 20, fill: 'rgba(245,184,19,0.15)', stroke: '#f5b813' },
@@ -301,36 +304,6 @@
     showToast('تم إدراج: ' + label);
   }
 
-  function reloadCanvasElements() {
-    if (!canvas || !window.mepEngine) return;
-    canvas.getObjects().forEach(o => { if (o !== tempWall) canvas.remove(o); });
-
-    window.mepEngine.elements.forEach(el => {
-      let obj;
-      const px = el.left || el.x || 100;
-      const py = el.top || el.y || 100;
-      const w = el.width || 60;
-      const h = el.height || 60;
-
-      if (el.type === 'wall') {
-        obj = new fabric.Rect({
-          left: px, top: py, width: w, height: h,
-          fill: '#475569', stroke: '#94a3b8', strokeWidth: 2, rx: 2, ry: 2
-        });
-      } else {
-        obj = new fabric.Rect({
-          left: px, top: py, width: w, height: h,
-          fill: 'rgba(0,242,254,0.15)', stroke: '#00f2fe', strokeWidth: 2, rx: 6, ry: 6
-        });
-      }
-
-      obj.snId = el.id;
-      obj.snType = el.type;
-      canvas.add(obj);
-    });
-    canvas.requestRenderAll();
-  }
-
   function syncObjectDataToEngine(obj) {
     if (!obj || !obj.snId || !window.mepEngine) return;
     window.mepEngine.updateElement(obj.snId, {
@@ -348,7 +321,6 @@
     if (!active || !active.snId) { showToast('اختر عنصراً لنسخه'); return; }
     if (window.mepEngine) {
       window.mepEngine.duplicateElement(active.snId);
-      reloadCanvasElements();
       pushUndo();
       updateBottomStatusBar();
       showToast('📋 تم نسخ العنصر');
