@@ -149,3 +149,10 @@ window.addEventListener('keydown', (e) => {
     runSmartValidationReport();
   }
 });
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.getElementById('splash-screen')?.classList.add('splash-hidden');
+    }, 2500);
+  });
+
