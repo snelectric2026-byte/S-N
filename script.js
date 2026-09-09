@@ -1,6 +1,6 @@
 /* ==========================================================================
-   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.8 FULL MASTER
-   يعمل مع mep_engine.js + fabric.js + three.js
+   SNelectric MEP Engine - UI & Application Logic (script.js) - v3.95 MERGED MASTER
+   Unified UI, Undo/Redo Stack, Advanced Architectural Symbols, 3D Sync & Object Dimensions
    ========================================================================== */
 
 (function () {
@@ -26,7 +26,7 @@
     if (s) s.classList.add('splash-hidden');
   }
   window.addEventListener('load', () => setTimeout(hideSplash, 2200));
-  setTimeout(hideSplash, 6000); // أمان: لا تتعلق الشاشة أبداً
+  setTimeout(hideSplash, 6000);
 
   /* ---------------------- بدء التطبيق ---------------------- */
   document.addEventListener('DOMContentLoaded', initApp);
@@ -65,11 +65,6 @@
         tempWall.set({ x2: snapped.x, y2: snapped.y });
         canvas.requestRenderAll();
       }
-
-      const activeObj = canvas.getActiveObject();
-      if (activeObj && activeObj.snType && (activeObj.snType === 'door' || activeObj.snType === 'window')) {
-        checkWallIntersectionAndSnap(activeObj);
-      }
     });
 
     canvas.on('mouse:down', (opt) => {
@@ -78,24 +73,28 @@
       if (!wallStart) {
         wallStart = p;
         tempWall = new fabric.Line([p.x, p.y, p.x, p.y], {
-          stroke: '#94a3b8', strokeWidth: 6, selectable: true, snElement: true, snType: 'wall'
+          stroke: '#f5b813', strokeWidth: 8, selectable: false
         });
         canvas.add(tempWall);
       } else {
         tempWall.set({ x2: p.x, y2: p.y });
-        tempWall.setCoords();
-        const len = Math.hypot(p.x - wallStart.x, p.y - wallStart.y) * scaleMMperPX / 1000;
+        const lenM = Math.hypot(p.x - wallStart.x, p.y - wallStart.y) * scaleMMperPX / 1000;
+        canvas.remove(tempWall);
+        
         if (window.mepEngine) {
-          window.mepEngine.addElement('wall', 'جدار', wallStart.x, wallStart.y, {
-            width: Math.abs(p.x - wallStart.x) || 6,
-            height: Math.abs(p.y - wallStart.y) || 6,
-            label: 'جدار ' + len.toFixed(2) + ' م'
+          const wElem = window.mepEngine.addElement('wall', 'جدار', wallStart.x, wallStart.y, {
+            width: Math.abs(p.x - wallStart.x) || 100,
+            height: Math.abs(p.y - wallStart.y) || 14,
+            label: 'جدار (' + lenM.toFixed(1) + 'م)',
+            wallHeight: 280
           });
+          reloadCanvasElements();
         }
         wallStart = null; tempWall = null;
+        wallMode = false;
         pushUndo();
         updateBottomStatusBar();
-        showToast('تم رسم الجدار ✅');
+        showToast('تم رسم الجدار بنجاح ✅');
       }
     });
 
@@ -103,14 +102,15 @@
     canvas.on('selection:updated', onSelect);
     canvas.on('selection:cleared', () => { setText('statW', 0); setText('statH', 0); });
     canvas.on('object:modified', (opt) => {
-      if (opt.target && (opt.target.snType === 'door' || opt.target.snType === 'window')) {
-        checkWallIntersectionAndSnap(opt.target);
+      if (opt.target) {
+        syncObjectDataToEngine(opt.target);
       }
       pushUndo(); 
       onSelect(); 
     });
 
     drawGrid();
+    reloadCanvasElements();
     pushUndo();
   }
 
@@ -171,7 +171,7 @@
     if (target) target.classList.toggle('active');
   };
 
-  /* ---------------------- مولد الرموز الهندسية الحقيقية ---------------------- */
+  /* ---------------------- مولد الرموز الهندسية المتقدمة ---------------------- */
   function createArchitecturalSymbol(subType, p) {
     const parts = [];
     if (subType === 'باب' || subType.includes('باب')) {
@@ -234,7 +234,7 @@
     return parts;
   }
 
-  /* ---------------------- إضافة عناصر من الكتالوج ---------------------- */
+  /* ---------------------- الكتلوج وإضافة العناصر ---------------------- */
   const PRESETS = {
     architectural: { w: 120, h: 90, fill: 'rgba(0,242,254,0.08)', stroke: '#00f2fe' },
     carpentry:     { w: 80,  h: 20, fill: 'rgba(245,184,19,0.15)', stroke: '#f5b813' },
@@ -301,15 +301,71 @@
     showToast('تم إدراج: ' + label);
   }
 
-  function checkWallIntersectionAndSnap(obj) {
-    if (!canvas) return;
-    const objects = canvas.getObjects();
-    objects.forEach(o => {
-      if (o !== obj && o.snType === 'wall') {
-        const objCenter = obj.getCenterPoint();
+  function reloadCanvasElements() {
+    if (!canvas || !window.mepEngine) return;
+    canvas.getObjects().forEach(o => { if (o !== tempWall) canvas.remove(o); });
+
+    window.mepEngine.elements.forEach(el => {
+      let obj;
+      const px = el.left || el.x || 100;
+      const py = el.top || el.y || 100;
+      const w = el.width || 60;
+      const h = el.height || 60;
+
+      if (el.type === 'wall') {
+        obj = new fabric.Rect({
+          left: px, top: py, width: w, height: h,
+          fill: '#475569', stroke: '#94a3b8', strokeWidth: 2, rx: 2, ry: 2
+        });
+      } else {
+        obj = new fabric.Rect({
+          left: px, top: py, width: w, height: h,
+          fill: 'rgba(0,242,254,0.15)', stroke: '#00f2fe', strokeWidth: 2, rx: 6, ry: 6
+        });
       }
+
+      obj.snId = el.id;
+      obj.snType = el.type;
+      canvas.add(obj);
     });
+    canvas.requestRenderAll();
   }
+
+  function syncObjectDataToEngine(obj) {
+    if (!obj || !obj.snId || !window.mepEngine) return;
+    window.mepEngine.updateElement(obj.snId, {
+      left: obj.left,
+      top: obj.top,
+      width: obj.getScaledWidth(),
+      height: obj.getScaledHeight()
+    });
+    updateBottomStatusBar();
+  }
+
+  window.duplicateActiveObject = function() {
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+    if (!active || !active.snId) { showToast('اختر عنصراً لنسخه'); return; }
+    if (window.mepEngine) {
+      window.mepEngine.duplicateElement(active.snId);
+      reloadCanvasElements();
+      pushUndo();
+      updateBottomStatusBar();
+      showToast('📋 تم نسخ العنصر');
+    }
+  };
+
+  window.deleteActiveObject = function() {
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+    if (!active || !active.snId) { showToast('اختر عنصراً لحذفه'); return; }
+    window.mepEngine.removeElement(active.snId);
+    canvas.remove(active);
+    canvas.requestRenderAll();
+    pushUndo();
+    updateBottomStatusBar();
+    showToast('🗑️ تم الحذف');
+  };
 
   window.addFreeText = function () {
     if (!canvas) return;
@@ -402,7 +458,7 @@
     if (window.mepEngine) window.mepEngine.snapEnabled = snapEnabled;
   };
 
-  /* ---------------------- تراجع / إعادة ---------------------- */
+  /* ---------------------- تراجع / إعادة (Undo / Redo) ---------------------- */
   function pushUndo() {
     if (!canvas || isRestoring) return;
     undoStack.push(JSON.stringify(canvas.toJSON(['snElement', 'snType', 'snSubtype', 'snLabel', 'snId', 'customHeight'])));
@@ -470,7 +526,7 @@
     document.body.appendChild(a); a.click(); a.remove();
   }
 
-  /* ---------------------- عرض 2D / 3D ---------------------- */
+  /* ---------------------- عرض 2D / 3D Sync ---------------------- */
   let three = null;
 
   window.toggle2DView = function () {
@@ -532,15 +588,13 @@
     const eng = window.mepEngine;
     if (!eng) return;
 
-    const defaultWallHeight = 140;
-
     eng.elements.forEach(el => {
       let mesh;
       const posX = (el.x || el.left || 0) - 250;
       const posZ = (el.y || el.top || 0) - 250;
       const w = el.width || 40;
       const d = el.height || 40;
-      const hVal = el.wallHeight || defaultWallHeight;
+      const hVal = el.wallHeight || 280;
 
       if (el.type === 'wall') {
         const wallGeo = new THREE.BoxGeometry(w, hVal, d);
@@ -549,34 +603,14 @@
         mesh.position.set(posX, hVal / 2, posZ);
 
       } else if (el.type === 'architectural' || el.type === 'room') {
-        const floorGeo = new THREE.BoxGeometry(w, 4, d);
+        const floorGeo = new THREE.BoxGeometry(w, hVal, d);
         const floorMat = new THREE.MeshLambertMaterial({ color: 0x0f172a, transparent: true, opacity: 0.7 });
         mesh = new THREE.Mesh(floorGeo, floorMat);
-        mesh.position.set(posX, 2, posZ);
-
-      } else if (el.type === 'carpentry' || el.type === 'door' || el.type === 'window') {
-        const isDoor = (el.subType || '').includes('باب');
-        const h = isDoor ? 100 : 60;
-        const geo = new THREE.BoxGeometry(w, h, 6);
-        const mat = new THREE.MeshLambertMaterial({ color: isDoor ? 0xf5b813 : 0x38bdf8, transparent: true, opacity: 0.85 });
-        mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(posX, h / 2, posZ);
-
-      } else if (el.type === 'electrical' || el.type === 'power') {
-        const geo = new THREE.BoxGeometry(12, 12, 4);
-        const mat = new THREE.MeshLambertMaterial({ color: 0xff3344 });
-        mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(posX, 50, posZ);
-
-      } else if (el.type === 'plumbing') {
-        const geo = new THREE.CylinderGeometry(15, 15, 30, 16);
-        const mat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 });
-        mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(posX, 15, posZ);
+        mesh.position.set(posX, hVal / 2, posZ);
 
       } else {
         const geo = new THREE.BoxGeometry(w, 35, d);
-        const mat = new THREE.MeshLambertMaterial({ color: 0x94a3b8 });
+        const mat = new THREE.MeshLambertMaterial({ color: 0x00f2fe, transparent: true, opacity: 0.85 });
         mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(posX, 17.5, posZ);
       }
@@ -596,7 +630,7 @@
     });
   }
 
-  /* ---------------------- الأدوات الهندسية ---------------------- */
+  /* ---------------------- الأدوات الهندسية والتقارير ---------------------- */
   function initToolBarListeners() {
     bind('validate-btn', '.btn-validate', runSmartValidationReport);
     bind('boq-btn', '.btn-boq', showBOQReport);
@@ -657,12 +691,7 @@
         setSysStatus('جاهز 🟢', '#22c55e');
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && canvas) {
-        const o = canvas.getActiveObject();
-        if (o) {
-          if (o.snId && window.mepEngine) window.mepEngine.removeElement(o.snId);
-          canvas.remove(o); canvas.discardActiveObject(); canvas.requestRenderAll();
-          pushUndo(); updateBottomStatusBar();
-        }
+        window.deleteActiveObject();
       }
     });
   }
